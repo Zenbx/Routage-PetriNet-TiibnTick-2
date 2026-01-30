@@ -1,0 +1,47 @@
+spring:
+  application:
+    name: delivery-optimization-api
+  r2dbc:
+    url: ${SPRING_R2DBC_URL:r2dbc:postgresql://localhost:5432/delivery_db}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+    pool:
+      initial-size: 5
+      max-size: 20
+      validation-query: SELECT 1
+  liquibase:
+    enabled: true
+    url: ${SPRING_LIQUIBASE_URL:jdbc:postgresql://localhost:5432/delivery_db}
+    user: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+    change-log: classpath:db/changelog/db.changelog-master.xml
+  jackson:
+    date-format: yyyy-MM-dd'T'HH:mm:ssZ
+    serialization:
+      write-dates-as-timestamps: false
+
+server:
+  port: ${SERVER_PORT:8080}
+
+logging:
+  level:
+    com.delivery.optimization: DEBUG
+    org.springframework.data.r2dbc: DEBUG
+    org.springframework.web: DEBUG
+    reactor.netty: DEBUG
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always
+    prometheus:
+      enabled: true
+
+# Petri Net API Integration
+petri-net:
+  api:
+    url: ${PETRI_NET_API_URL:http://localhost:8081}

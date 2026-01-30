@@ -1,0 +1,409 @@
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+ :: Spring Boot ::                (v3.2.2)
+
+2026-01-24T11:42:45.173+01:00  INFO 37396 --- [delivery-optimization-api] [           main] c.d.o.DeliveryOptimizationApplication    : Starting DeliveryOptimizationApplication v0.0.1-SNAPSHOT using Java 21.0.9 with PID 37396 (F:\Projet RÃ©seau\delivery-optimization-api\target\optimization-api-0.0.1-SNAPSHOT.jar started by USER in F:\Projet RÃ©seau\delivery-optimization-api)
+2026-01-24T11:42:45.190+01:00 DEBUG 37396 --- [delivery-optimization-api] [           main] c.d.o.DeliveryOptimizationApplication    : Running with Spring Boot v3.2.2, Spring v6.1.3
+2026-01-24T11:42:45.196+01:00  INFO 37396 --- [delivery-optimization-api] [           main] c.d.o.DeliveryOptimizationApplication    : No active profile set, falling back to 1 default profile: "default"
+2026-01-24T11:42:48.248+01:00  INFO 37396 --- [delivery-optimization-api] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data R2DBC repositories in DEFAULT mode.
+2026-01-24T11:42:48.672+01:00  INFO 37396 --- [delivery-optimization-api] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 411 ms. Found 8 R2DBC repository interfaces.
+2026-01-24T11:42:51.393+01:00  INFO 37396 --- [delivery-optimization-api] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8080 (http)
+2026-01-24T11:42:51.436+01:00  INFO 37396 --- [delivery-optimization-api] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-01-24T11:42:51.436+01:00  INFO 37396 --- [delivery-optimization-api] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.18]
+2026-01-24T11:42:51.554+01:00  INFO 37396 --- [delivery-optimization-api] [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2026-01-24T11:42:51.558+01:00  INFO 37396 --- [delivery-optimization-api] [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 5913 ms
+2026-01-24T11:42:56.097+01:00  INFO 37396 --- [delivery-optimization-api] [           main] liquibase.database                       : Set default schema name to public
+Found 2 files with the path 'classpath:db/changelog/db.changelog-master.xml':
+    - file:/F:/Projet%20Réseau/delivery-optimization-api/src/main/resources/db/changelog/db.changelog-master.xml
+    - jar:nested:/F:/Projet%20Réseau/delivery-optimization-api/target/optimization-api-0.0.1-SNAPSHOT.jar/!BOOT-INF/classes/!/db/changelog/db.changelog-master.xml
+  Search Path: 
+    - Spring classpath
+  You can limit the search path to remove duplicates with the liquibase.searchPath setting.
+  To fail when duplicates are found, set liquibase.duplicateFileMode=ERROR
+  Choosing: file:/F:/Projet%20Réseau/delivery-optimization-api/src/main/resources/db/changelog/db.changelog-master.xml
+2026-01-24T11:42:56.373+01:00  WARN 37396 --- [delivery-optimization-api] [           main] liquibase.integration                    : Found 2 files with the path 'classpath:db/changelog/db.changelog-master.xml':
+    - file:/F:/Projet%20RÃ©seau/delivery-optimization-api/src/main/resources/db/changelog/db.changelog-master.xml
+    - jar:nested:/F:/Projet%20RÃ©seau/delivery-optimization-api/target/optimization-api-0.0.1-SNAPSHOT.jar/!BOOT-INF/classes/!/db/changelog/db.changelog-master.xml
+  Search Path: 
+    - Spring classpath
+  You can limit the search path to remove duplicates with the liquibase.searchPath setting.
+  To fail when duplicates are found, set liquibase.duplicateFileMode=ERROR
+  Choosing: file:/F:/Projet%20RÃ©seau/delivery-optimization-api/src/main/resources/db/changelog/db.changelog-master.xml
+Found 2 files with the path 'db/changelog/v1/001-create-nodes-table.sql':
+    - file:/F:/Projet%20Réseau/delivery-optimization-api/src/main/resources/db/changelog/v1/001-create-nodes-table.sql
+    - jar:nested:/F:/Projet%20Réseau/delivery-optimization-api/target/optimization-api-0.0.1-SNAPSHOT.jar/!BOOT-INF/classes/!/db/changelog/v1/001-create-nodes-table.sql
+  Search Path: 
+    - Spring classpath
+  You can limit the search path to remove duplicates with the liquibase.searchPath setting.
+  To fail when duplicates are found, set liquibase.duplicateFileMode=ERROR
+  Choosing: file:/F:/Projet%20Réseau/delivery-optimization-api/src/main/resources/db/changelog/v1/001-create-nodes-table.sql
+2026-01-24T11:42:56.716+01:00  WARN 37396 --- [delivery-optimization-api] [           main] liquibase.integration                    : Found 2 files with the path 'db/changelog/v1/001-create-nodes-table.sql':
+    - file:/F:/Projet%20RÃ©seau/delivery-optimization-api/src/main/resources/db/changelog/v1/001-create-nodes-table.sql
+    - jar:nested:/F:/Projet%20RÃ©seau/delivery-optimization-api/target/optimization-api-0.0.1-SNAPSHOT.jar/!BOOT-INF/classes/!/db/changelog/v1/001-create-nodes-table.sql
+  Search Path: 
+    - Spring classpath
+  You can limit the search path to remove duplicates with the liquibase.searchPath setting.
+  To fail when duplicates are found, set liquibase.duplicateFileMode=ERROR
+  Choosing: file:/F:/Projet%20RÃ©seau/delivery-optimization-api/src/main/resources/db/changelog/v1/001-create-nodes-table.sql
+Found 2 files with the path 'db/changelog/v1/001-create-nodes-table.sql':
+    - file:/F:/Projet%20Réseau/delivery-optimization-api/src/main/resources/db/changelog/v1/001-create-nodes-table.sql
+    - jar:nested:/F:/Projet%20Réseau/delivery-optimization-api/target/optimization-api-0.0.1-SNAPSHOT.jar/!BOOT-INF/classes/!/db/changelog/v1/001-create-nodes-table.sql
+  Search Path: 
+    - Spring classpath
+  You can limit the search path to remove duplicates with the liquibase.searchPath setting.
+  To fail when duplicates are found, set liquibase.duplicateFileMode=ERROR
+  Choosing: file:/F:/Projet%20Réseau/delivery-optimization-api/src/main/resources/db/changelog/v1/001-create-nodes-table.sql
+2026-01-24T11:42:56.717+01:00  WARN 37396 --- [delivery-optimization-api] [           main] liquibase.integration                    : Found 2 files with the path 'db/changelog/v1/001-create-nodes-table.sql':
+    - file:/F:/Projet%20RÃ©seau/delivery-optimization-api/src/main/resources/db/changelog/v1/001-create-nodes-table.sql
+    - jar:nested:/F:/Projet%20RÃ©seau/delivery-optimization-api/target/optimization-api-0.0.1-SNAPSHOT.jar/!BOOT-INF/classes/!/db/changelog/v1/001-create-nodes-table.sql
+  Search Path: 
+    - Spring classpath
+  You can limit the search path to remove duplicates with the liquibase.searchPath setting.
+  To fail when duplicates are found, set liquibase.duplicateFileMode=ERROR
+  Choosing: file:/F:/Projet%20RÃ©seau/delivery-optimization-api/src/main/resources/db/changelog/v1/001-create-nodes-table.sql
+Found 2 files with the path 'db/changelog/v1/001-create-nodes-table.sql':
+    - file:/F:/Projet%20Réseau/delivery-optimization-api/src/main/resources/db/changelog/v1/001-create-nodes-table.sql
+    - jar:nested:/F:/Projet%20Réseau/delivery-optimization-api/target/optimization-api-0.0.1-SNAPSHOT.jar/!BOOT-INF/classes/!/db/changelog/v1/001-create-nodes-table.sql
+  Search Path: 
+    - Spring classpath
+  You can limit the search path to remove duplicates with the liquibase.searchPath setting.
+  To fail when duplicates are found, set liquibase.duplicateFileMode=ERROR
+  Choosing: file:/F:/Projet%20Réseau/delivery-optimization-api/src/main/resources/db/changelog/v1/001-create-nodes-table.sql
+2026-01-24T11:42:56.729+01:00  WARN 37396 --- [delivery-optimization-api] [           main] liquibase.integration                    : Found 2 files with the path 'db/changelog/v1/001-create-nodes-table.sql':
+    - file:/F:/Projet%20RÃ©seau/delivery-optimization-api/src/main/resources/db/changelog/v1/001-create-nodes-table.sql
+    - jar:nested:/F:/Projet%20RÃ©seau/delivery-optimization-api/target/optimization-api-0.0.1-SNAPSHOT.jar/!BOOT-INF/classes/!/db/changelog/v1/001-create-nodes-table.sql
+  Search Path: 
+    - Spring classpath
+  You can limit the search path to remove duplicates with the liquibase.searchPath setting.
+  To fail when duplicates are found, set liquibase.duplicateFileMode=ERROR
+  Choosing: file:/F:/Projet%20RÃ©seau/delivery-optimization-api/src/main/resources/db/changelog/v1/001-create-nodes-table.sql
+Found 2 files with the path 'db/changelog/v1/002-create-arcs-table.sql':
+    - file:/F:/Projet%20Réseau/delivery-optimization-api/src/main/resources/db/changelog/v1/002-create-arcs-table.sql
+    - jar:nested:/F:/Projet%20Réseau/delivery-optimization-api/target/optimization-api-0.0.1-SNAPSHOT.jar/!BOOT-INF/classes/!/db/changelog/v1/002-create-arcs-table.sql
+  Search Path: 
+    - Spring classpath
+  You can limit the search path to remove duplicates with the liquibase.searchPath setting.
+  To fail when duplicates are found, set liquibase.duplicateFileMode=ERROR
+  Choosing: file:/F:/Projet%20Réseau/delivery-optimization-api/src/main/resources/db/changelog/v1/002-create-arcs-table.sql
+2026-01-24T11:42:56.743+01:00  WARN 37396 --- [delivery-optimization-api] [           main] liquibase.integration                    : Found 2 files with the path 'db/changelog/v1/002-create-arcs-table.sql':
+    - file:/F:/Projet%20RÃ©seau/delivery-optimization-api/src/main/resources/db/changelog/v1/002-create-arcs-table.sql
+    - jar:nested:/F:/Projet%20RÃ©seau/delivery-optimization-api/target/optimization-api-0.0.1-SNAPSHOT.jar/!BOOT-INF/classes/!/db/changelog/v1/002-create-arcs-table.sql
+  Search Path: 
+    - Spring classpath
+  You can limit the search path to remove duplicates with the liquibase.searchPath setting.
+  To fail when duplicates are found, set liquibase.duplicateFileMode=ERROR
+  Choosing: file:/F:/Projet%20RÃ©seau/delivery-optimization-api/src/main/resources/db/changelog/v1/002-create-arcs-table.sql
+Found 2 files with the path 'db/changelog/v1/002-create-arcs-table.sql':
+    - file:/F:/Projet%20Réseau/delivery-optimization-api/src/main/resources/db/changelog/v1/002-create-arcs-table.sql
+    - jar:nested:/F:/Projet%20Réseau/delivery-optimization-api/target/optimization-api-0.0.1-SNAPSHOT.jar/!BOOT-INF/classes/!/db/changelog/v1/002-create-arcs-table.sql
+  Search Path: 
+    - Spring classpath
+  You can limit the search path to remove duplicates with the liquibase.searchPath setting.
+  To fail when duplicates are found, set liquibase.duplicateFileMode=ERROR
+  Choosing: file:/F:/Projet%20Réseau/delivery-optimization-api/src/main/resources/db/changelog/v1/002-create-arcs-table.sql
+2026-01-24T11:42:56.745+01:00  WARN 37396 --- [delivery-optimization-api] [           main] liquibase.integration                    : Found 2 files with the path 'db/changelog/v1/002-create-arcs-table.sql':
+    - file:/F:/Projet%20RÃ©seau/delivery-optimization-api/src/main/resources/db/changelog/v1/002-create-arcs-table.sql
+    - jar:nested:/F:/Projet%20RÃ©seau/delivery-optimization-api/target/optimization-api-0.0.1-SNAPSHOT.jar/!BOOT-INF/classes/!/db/changelog/v1/002-create-arcs-table.sql
+  Search Path: 
+    - Spring classpath
+  You can limit the search path to remove duplicates with the liquibase.searchPath setting.
+  To fail when duplicates are found, set liquibase.duplicateFileMode=ERROR
+  Choosing: file:/F:/Projet%20RÃ©seau/delivery-optimization-api/src/main/resources/db/changelog/v1/002-create-arcs-table.sql
+Found 2 files with the path 'db/changelog/v1/002-create-arcs-table.sql':
+    - file:/F:/Projet%20Réseau/delivery-optimization-api/src/main/resources/db/changelog/v1/002-create-arcs-table.sql
+    - jar:nested:/F:/Projet%20Réseau/delivery-optimization-api/target/optimization-api-0.0.1-SNAPSHOT.jar/!BOOT-INF/classes/!/db/changelog/v1/002-create-arcs-table.sql
+  Search Path: 
+    - Spring classpath
+  You can limit the search path to remove duplicates with the liquibase.searchPath setting.
+  To fail when duplicates are found, set liquibase.duplicateFileMode=ERROR
+  Choosing: file:/F:/Projet%20Réseau/delivery-optimization-api/src/main/resources/db/changelog/v1/002-create-arcs-table.sql
+2026-01-24T11:42:56.748+01:00  WARN 37396 --- [delivery-optimization-api] [           main] liquibase.integration                    : Found 2 files with the path 'db/changelog/v1/002-create-arcs-table.sql':
+    - file:/F:/Projet%20RÃ©seau/delivery-optimization-api/src/main/resources/db/changelog/v1/002-create-arcs-table.sql
+    - jar:nested:/F:/Projet%20RÃ©seau/delivery-optimization-api/target/optimization-api-0.0.1-SNAPSHOT.jar/!BOOT-INF/classes/!/db/changelog/v1/002-create-arcs-table.sql
+  Search Path: 
+    - Spring classpath
+  You can limit the search path to remove duplicates with the liquibase.searchPath setting.
+  To fail when duplicates are found, set liquibase.duplicateFileMode=ERROR
+  Choosing: file:/F:/Projet%20RÃ©seau/delivery-optimization-api/src/main/resources/db/changelog/v1/002-create-arcs-table.sql
+Found 2 files with the path 'db/changelog/v1/003-create-deliveries-table.sql':
+    - file:/F:/Projet%20Réseau/delivery-optimization-api/src/main/resources/db/changelog/v1/003-create-deliveries-table.sql
+    - jar:nested:/F:/Projet%20Réseau/delivery-optimization-api/target/optimization-api-0.0.1-SNAPSHOT.jar/!BOOT-INF/classes/!/db/changelog/v1/003-create-deliveries-table.sql
+  Search Path: 
+    - Spring classpath
+  You can limit the search path to remove duplicates with the liquibase.searchPath setting.
+  To fail when duplicates are found, set liquibase.duplicateFileMode=ERROR
+  Choosing: file:/F:/Projet%20Réseau/delivery-optimization-api/src/main/resources/db/changelog/v1/003-create-deliveries-table.sql
+2026-01-24T11:42:56.751+01:00  WARN 37396 --- [delivery-optimization-api] [           main] liquibase.integration                    : Found 2 files with the path 'db/changelog/v1/003-create-deliveries-table.sql':
+    - file:/F:/Projet%20RÃ©seau/delivery-optimization-api/src/main/resources/db/changelog/v1/003-create-deliveries-table.sql
+    - jar:nested:/F:/Projet%20RÃ©seau/delivery-optimization-api/target/optimization-api-0.0.1-SNAPSHOT.jar/!BOOT-INF/classes/!/db/changelog/v1/003-create-deliveries-table.sql
+  Search Path: 
+    - Spring classpath
+  You can limit the search path to remove duplicates with the liquibase.searchPath setting.
+  To fail when duplicates are found, set liquibase.duplicateFileMode=ERROR
+  Choosing: file:/F:/Projet%20RÃ©seau/delivery-optimization-api/src/main/resources/db/changelog/v1/003-create-deliveries-table.sql
+Found 2 files with the path 'db/changelog/v1/003-create-deliveries-table.sql':
+    - file:/F:/Projet%20Réseau/delivery-optimization-api/src/main/resources/db/changelog/v1/003-create-deliveries-table.sql
+    - jar:nested:/F:/Projet%20Réseau/delivery-optimization-api/target/optimization-api-0.0.1-SNAPSHOT.jar/!BOOT-INF/classes/!/db/changelog/v1/003-create-deliveries-table.sql
+  Search Path: 
+    - Spring classpath
+  You can limit the search path to remove duplicates with the liquibase.searchPath setting.
+  To fail when duplicates are found, set liquibase.duplicateFileMode=ERROR
+  Choosing: file:/F:/Projet%20Réseau/delivery-optimization-api/src/main/resources/db/changelog/v1/003-create-deliveries-table.sql
+2026-01-24T11:42:56.753+01:00  WARN 37396 --- [delivery-optimization-api] [           main] liquibase.integration                    : Found 2 files with the path 'db/changelog/v1/003-create-deliveries-table.sql':
+    - file:/F:/Projet%20RÃ©seau/delivery-optimization-api/src/main/resources/db/changelog/v1/003-create-deliveries-table.sql
+    - jar:nested:/F:/Projet%20RÃ©seau/delivery-optimization-api/target/optimization-api-0.0.1-SNAPSHOT.jar/!BOOT-INF/classes/!/db/changelog/v1/003-create-deliveries-table.sql
+  Search Path: 
+    - Spring classpath
+  You can limit the search path to remove duplicates with the liquibase.searchPath setting.
+  To fail when duplicates are found, set liquibase.duplicateFileMode=ERROR
+  Choosing: file:/F:/Projet%20RÃ©seau/delivery-optimization-api/src/main/resources/db/changelog/v1/003-create-deliveries-table.sql
+Found 2 files with the path 'db/changelog/v1/003-create-deliveries-table.sql':
+    - file:/F:/Projet%20Réseau/delivery-optimization-api/src/main/resources/db/changelog/v1/003-create-deliveries-table.sql
+    - jar:nested:/F:/Projet%20Réseau/delivery-optimization-api/target/optimization-api-0.0.1-SNAPSHOT.jar/!BOOT-INF/classes/!/db/changelog/v1/003-create-deliveries-table.sql
+  Search Path: 
+    - Spring classpath
+  You can limit the search path to remove duplicates with the liquibase.searchPath setting.
+  To fail when duplicates are found, set liquibase.duplicateFileMode=ERROR
+  Choosing: file:/F:/Projet%20Réseau/delivery-optimization-api/src/main/resources/db/changelog/v1/003-create-deliveries-table.sql
+2026-01-24T11:42:56.755+01:00  WARN 37396 --- [delivery-optimization-api] [           main] liquibase.integration                    : Found 2 files with the path 'db/changelog/v1/003-create-deliveries-table.sql':
+    - file:/F:/Projet%20RÃ©seau/delivery-optimization-api/src/main/resources/db/changelog/v1/003-create-deliveries-table.sql
+    - jar:nested:/F:/Projet%20RÃ©seau/delivery-optimization-api/target/optimization-api-0.0.1-SNAPSHOT.jar/!BOOT-INF/classes/!/db/changelog/v1/003-create-deliveries-table.sql
+  Search Path: 
+    - Spring classpath
+  You can limit the search path to remove duplicates with the liquibase.searchPath setting.
+  To fail when duplicates are found, set liquibase.duplicateFileMode=ERROR
+  Choosing: file:/F:/Projet%20RÃ©seau/delivery-optimization-api/src/main/resources/db/changelog/v1/003-create-deliveries-table.sql
+Found 2 files with the path 'db/changelog/v1/004-create-tours-table.sql':
+    - file:/F:/Projet%20Réseau/delivery-optimization-api/src/main/resources/db/changelog/v1/004-create-tours-table.sql
+    - jar:nested:/F:/Projet%20Réseau/delivery-optimization-api/target/optimization-api-0.0.1-SNAPSHOT.jar/!BOOT-INF/classes/!/db/changelog/v1/004-create-tours-table.sql
+  Search Path: 
+    - Spring classpath
+  You can limit the search path to remove duplicates with the liquibase.searchPath setting.
+  To fail when duplicates are found, set liquibase.duplicateFileMode=ERROR
+  Choosing: file:/F:/Projet%20Réseau/delivery-optimization-api/src/main/resources/db/changelog/v1/004-create-tours-table.sql
+2026-01-24T11:42:56.758+01:00  WARN 37396 --- [delivery-optimization-api] [           main] liquibase.integration                    : Found 2 files with the path 'db/changelog/v1/004-create-tours-table.sql':
+    - file:/F:/Projet%20RÃ©seau/delivery-optimization-api/src/main/resources/db/changelog/v1/004-create-tours-table.sql
+    - jar:nested:/F:/Projet%20RÃ©seau/delivery-optimization-api/target/optimization-api-0.0.1-SNAPSHOT.jar/!BOOT-INF/classes/!/db/changelog/v1/004-create-tours-table.sql
+  Search Path: 
+    - Spring classpath
+  You can limit the search path to remove duplicates with the liquibase.searchPath setting.
+  To fail when duplicates are found, set liquibase.duplicateFileMode=ERROR
+  Choosing: file:/F:/Projet%20RÃ©seau/delivery-optimization-api/src/main/resources/db/changelog/v1/004-create-tours-table.sql
+Found 2 files with the path 'db/changelog/v1/004-create-tours-table.sql':
+    - file:/F:/Projet%20Réseau/delivery-optimization-api/src/main/resources/db/changelog/v1/004-create-tours-table.sql
+    - jar:nested:/F:/Projet%20Réseau/delivery-optimization-api/target/optimization-api-0.0.1-SNAPSHOT.jar/!BOOT-INF/classes/!/db/changelog/v1/004-create-tours-table.sql
+  Search Path: 
+    - Spring classpath
+  You can limit the search path to remove duplicates with the liquibase.searchPath setting.
+  To fail when duplicates are found, set liquibase.duplicateFileMode=ERROR
+  Choosing: file:/F:/Projet%20Réseau/delivery-optimization-api/src/main/resources/db/changelog/v1/004-create-tours-table.sql
+2026-01-24T11:42:56.759+01:00  WARN 37396 --- [delivery-optimization-api] [           main] liquibase.integration                    : Found 2 files with the path 'db/changelog/v1/004-create-tours-table.sql':
+    - file:/F:/Projet%20RÃ©seau/delivery-optimization-api/src/main/resources/db/changelog/v1/004-create-tours-table.sql
+    - jar:nested:/F:/Projet%20RÃ©seau/delivery-optimization-api/target/optimization-api-0.0.1-SNAPSHOT.jar/!BOOT-INF/classes/!/db/changelog/v1/004-create-tours-table.sql
+  Search Path: 
+    - Spring classpath
+  You can limit the search path to remove duplicates with the liquibase.searchPath setting.
+  To fail when duplicates are found, set liquibase.duplicateFileMode=ERROR
+  Choosing: file:/F:/Projet%20RÃ©seau/delivery-optimization-api/src/main/resources/db/changelog/v1/004-create-tours-table.sql
+Found 2 files with the path 'db/changelog/v1/004-create-tours-table.sql':
+    - file:/F:/Projet%20Réseau/delivery-optimization-api/src/main/resources/db/changelog/v1/004-create-tours-table.sql
+    - jar:nested:/F:/Projet%20Réseau/delivery-optimization-api/target/optimization-api-0.0.1-SNAPSHOT.jar/!BOOT-INF/classes/!/db/changelog/v1/004-create-tours-table.sql
+  Search Path: 
+    - Spring classpath
+  You can limit the search path to remove duplicates with the liquibase.searchPath setting.
+  To fail when duplicates are found, set liquibase.duplicateFileMode=ERROR
+  Choosing: file:/F:/Projet%20Réseau/delivery-optimization-api/src/main/resources/db/changelog/v1/004-create-tours-table.sql
+2026-01-24T11:42:56.762+01:00  WARN 37396 --- [delivery-optimization-api] [           main] liquibase.integration                    : Found 2 files with the path 'db/changelog/v1/004-create-tours-table.sql':
+    - file:/F:/Projet%20RÃ©seau/delivery-optimization-api/src/main/resources/db/changelog/v1/004-create-tours-table.sql
+    - jar:nested:/F:/Projet%20RÃ©seau/delivery-optimization-api/target/optimization-api-0.0.1-SNAPSHOT.jar/!BOOT-INF/classes/!/db/changelog/v1/004-create-tours-table.sql
+  Search Path: 
+    - Spring classpath
+  You can limit the search path to remove duplicates with the liquibase.searchPath setting.
+  To fail when duplicates are found, set liquibase.duplicateFileMode=ERROR
+  Choosing: file:/F:/Projet%20RÃ©seau/delivery-optimization-api/src/main/resources/db/changelog/v1/004-create-tours-table.sql
+Found 2 files with the path 'db/changelog/v1/005-insert-test-data.sql':
+    - file:/F:/Projet%20Réseau/delivery-optimization-api/src/main/resources/db/changelog/v1/005-insert-test-data.sql
+    - jar:nested:/F:/Projet%20Réseau/delivery-optimization-api/target/optimization-api-0.0.1-SNAPSHOT.jar/!BOOT-INF/classes/!/db/changelog/v1/005-insert-test-data.sql
+  Search Path: 
+    - Spring classpath
+  You can limit the search path to remove duplicates with the liquibase.searchPath setting.
+  To fail when duplicates are found, set liquibase.duplicateFileMode=ERROR
+  Choosing: file:/F:/Projet%20Réseau/delivery-optimization-api/src/main/resources/db/changelog/v1/005-insert-test-data.sql
+2026-01-24T11:42:56.765+01:00  WARN 37396 --- [delivery-optimization-api] [           main] liquibase.integration                    : Found 2 files with the path 'db/changelog/v1/005-insert-test-data.sql':
+    - file:/F:/Projet%20RÃ©seau/delivery-optimization-api/src/main/resources/db/changelog/v1/005-insert-test-data.sql
+    - jar:nested:/F:/Projet%20RÃ©seau/delivery-optimization-api/target/optimization-api-0.0.1-SNAPSHOT.jar/!BOOT-INF/classes/!/db/changelog/v1/005-insert-test-data.sql
+  Search Path: 
+    - Spring classpath
+  You can limit the search path to remove duplicates with the liquibase.searchPath setting.
+  To fail when duplicates are found, set liquibase.duplicateFileMode=ERROR
+  Choosing: file:/F:/Projet%20RÃ©seau/delivery-optimization-api/src/main/resources/db/changelog/v1/005-insert-test-data.sql
+Found 2 files with the path 'db/changelog/v1/005-insert-test-data.sql':
+    - file:/F:/Projet%20Réseau/delivery-optimization-api/src/main/resources/db/changelog/v1/005-insert-test-data.sql
+    - jar:nested:/F:/Projet%20Réseau/delivery-optimization-api/target/optimization-api-0.0.1-SNAPSHOT.jar/!BOOT-INF/classes/!/db/changelog/v1/005-insert-test-data.sql
+  Search Path: 
+    - Spring classpath
+  You can limit the search path to remove duplicates with the liquibase.searchPath setting.
+  To fail when duplicates are found, set liquibase.duplicateFileMode=ERROR
+  Choosing: file:/F:/Projet%20Réseau/delivery-optimization-api/src/main/resources/db/changelog/v1/005-insert-test-data.sql
+2026-01-24T11:42:56.768+01:00  WARN 37396 --- [delivery-optimization-api] [           main] liquibase.integration                    : Found 2 files with the path 'db/changelog/v1/005-insert-test-data.sql':
+    - file:/F:/Projet%20RÃ©seau/delivery-optimization-api/src/main/resources/db/changelog/v1/005-insert-test-data.sql
+    - jar:nested:/F:/Projet%20RÃ©seau/delivery-optimization-api/target/optimization-api-0.0.1-SNAPSHOT.jar/!BOOT-INF/classes/!/db/changelog/v1/005-insert-test-data.sql
+  Search Path: 
+    - Spring classpath
+  You can limit the search path to remove duplicates with the liquibase.searchPath setting.
+  To fail when duplicates are found, set liquibase.duplicateFileMode=ERROR
+  Choosing: file:/F:/Projet%20RÃ©seau/delivery-optimization-api/src/main/resources/db/changelog/v1/005-insert-test-data.sql
+Found 2 files with the path 'db/changelog/v1/005-insert-test-data.sql':
+    - file:/F:/Projet%20Réseau/delivery-optimization-api/src/main/resources/db/changelog/v1/005-insert-test-data.sql
+    - jar:nested:/F:/Projet%20Réseau/delivery-optimization-api/target/optimization-api-0.0.1-SNAPSHOT.jar/!BOOT-INF/classes/!/db/changelog/v1/005-insert-test-data.sql
+  Search Path: 
+    - Spring classpath
+  You can limit the search path to remove duplicates with the liquibase.searchPath setting.
+  To fail when duplicates are found, set liquibase.duplicateFileMode=ERROR
+  Choosing: file:/F:/Projet%20Réseau/delivery-optimization-api/src/main/resources/db/changelog/v1/005-insert-test-data.sql
+2026-01-24T11:42:56.771+01:00  WARN 37396 --- [delivery-optimization-api] [           main] liquibase.integration                    : Found 2 files with the path 'db/changelog/v1/005-insert-test-data.sql':
+    - file:/F:/Projet%20RÃ©seau/delivery-optimization-api/src/main/resources/db/changelog/v1/005-insert-test-data.sql
+    - jar:nested:/F:/Projet%20RÃ©seau/delivery-optimization-api/target/optimization-api-0.0.1-SNAPSHOT.jar/!BOOT-INF/classes/!/db/changelog/v1/005-insert-test-data.sql
+  Search Path: 
+    - Spring classpath
+  You can limit the search path to remove duplicates with the liquibase.searchPath setting.
+  To fail when duplicates are found, set liquibase.duplicateFileMode=ERROR
+  Choosing: file:/F:/Projet%20RÃ©seau/delivery-optimization-api/src/main/resources/db/changelog/v1/005-insert-test-data.sql
+Found 2 files with the path 'db/changelog/v1/006-create-missing-tables.sql':
+    - file:/F:/Projet%20Réseau/delivery-optimization-api/src/main/resources/db/changelog/v1/006-create-missing-tables.sql
+    - jar:nested:/F:/Projet%20Réseau/delivery-optimization-api/target/optimization-api-0.0.1-SNAPSHOT.jar/!BOOT-INF/classes/!/db/changelog/v1/006-create-missing-tables.sql
+  Search Path: 
+    - Spring classpath
+  You can limit the search path to remove duplicates with the liquibase.searchPath setting.
+  To fail when duplicates are found, set liquibase.duplicateFileMode=ERROR
+  Choosing: file:/F:/Projet%20Réseau/delivery-optimization-api/src/main/resources/db/changelog/v1/006-create-missing-tables.sql
+2026-01-24T11:42:56.774+01:00  WARN 37396 --- [delivery-optimization-api] [           main] liquibase.integration                    : Found 2 files with the path 'db/changelog/v1/006-create-missing-tables.sql':
+    - file:/F:/Projet%20RÃ©seau/delivery-optimization-api/src/main/resources/db/changelog/v1/006-create-missing-tables.sql
+    - jar:nested:/F:/Projet%20RÃ©seau/delivery-optimization-api/target/optimization-api-0.0.1-SNAPSHOT.jar/!BOOT-INF/classes/!/db/changelog/v1/006-create-missing-tables.sql
+  Search Path: 
+    - Spring classpath
+  You can limit the search path to remove duplicates with the liquibase.searchPath setting.
+  To fail when duplicates are found, set liquibase.duplicateFileMode=ERROR
+  Choosing: file:/F:/Projet%20RÃ©seau/delivery-optimization-api/src/main/resources/db/changelog/v1/006-create-missing-tables.sql
+Found 2 files with the path 'db/changelog/v1/006-create-missing-tables.sql':
+    - file:/F:/Projet%20Réseau/delivery-optimization-api/src/main/resources/db/changelog/v1/006-create-missing-tables.sql
+    - jar:nested:/F:/Projet%20Réseau/delivery-optimization-api/target/optimization-api-0.0.1-SNAPSHOT.jar/!BOOT-INF/classes/!/db/changelog/v1/006-create-missing-tables.sql
+  Search Path: 
+    - Spring classpath
+  You can limit the search path to remove duplicates with the liquibase.searchPath setting.
+  To fail when duplicates are found, set liquibase.duplicateFileMode=ERROR
+  Choosing: file:/F:/Projet%20Réseau/delivery-optimization-api/src/main/resources/db/changelog/v1/006-create-missing-tables.sql
+2026-01-24T11:42:56.775+01:00  WARN 37396 --- [delivery-optimization-api] [           main] liquibase.integration                    : Found 2 files with the path 'db/changelog/v1/006-create-missing-tables.sql':
+    - file:/F:/Projet%20RÃ©seau/delivery-optimization-api/src/main/resources/db/changelog/v1/006-create-missing-tables.sql
+    - jar:nested:/F:/Projet%20RÃ©seau/delivery-optimization-api/target/optimization-api-0.0.1-SNAPSHOT.jar/!BOOT-INF/classes/!/db/changelog/v1/006-create-missing-tables.sql
+  Search Path: 
+    - Spring classpath
+  You can limit the search path to remove duplicates with the liquibase.searchPath setting.
+  To fail when duplicates are found, set liquibase.duplicateFileMode=ERROR
+  Choosing: file:/F:/Projet%20RÃ©seau/delivery-optimization-api/src/main/resources/db/changelog/v1/006-create-missing-tables.sql
+Found 2 files with the path 'db/changelog/v1/006-create-missing-tables.sql':
+    - file:/F:/Projet%20Réseau/delivery-optimization-api/src/main/resources/db/changelog/v1/006-create-missing-tables.sql
+    - jar:nested:/F:/Projet%20Réseau/delivery-optimization-api/target/optimization-api-0.0.1-SNAPSHOT.jar/!BOOT-INF/classes/!/db/changelog/v1/006-create-missing-tables.sql
+  Search Path: 
+    - Spring classpath
+  You can limit the search path to remove duplicates with the liquibase.searchPath setting.
+  To fail when duplicates are found, set liquibase.duplicateFileMode=ERROR
+  Choosing: file:/F:/Projet%20Réseau/delivery-optimization-api/src/main/resources/db/changelog/v1/006-create-missing-tables.sql
+2026-01-24T11:42:56.778+01:00  WARN 37396 --- [delivery-optimization-api] [           main] liquibase.integration                    : Found 2 files with the path 'db/changelog/v1/006-create-missing-tables.sql':
+    - file:/F:/Projet%20RÃ©seau/delivery-optimization-api/src/main/resources/db/changelog/v1/006-create-missing-tables.sql
+    - jar:nested:/F:/Projet%20RÃ©seau/delivery-optimization-api/target/optimization-api-0.0.1-SNAPSHOT.jar/!BOOT-INF/classes/!/db/changelog/v1/006-create-missing-tables.sql
+  Search Path: 
+    - Spring classpath
+  You can limit the search path to remove duplicates with the liquibase.searchPath setting.
+  To fail when duplicates are found, set liquibase.duplicateFileMode=ERROR
+  Choosing: file:/F:/Projet%20RÃ©seau/delivery-optimization-api/src/main/resources/db/changelog/v1/006-create-missing-tables.sql
+Found 2 files with the path 'db/changelog/v1/007-extended-test-data.sql':
+    - file:/F:/Projet%20Réseau/delivery-optimization-api/src/main/resources/db/changelog/v1/007-extended-test-data.sql
+    - jar:nested:/F:/Projet%20Réseau/delivery-optimization-api/target/optimization-api-0.0.1-SNAPSHOT.jar/!BOOT-INF/classes/!/db/changelog/v1/007-extended-test-data.sql
+  Search Path: 
+    - Spring classpath
+  You can limit the search path to remove duplicates with the liquibase.searchPath setting.
+  To fail when duplicates are found, set liquibase.duplicateFileMode=ERROR
+  Choosing: file:/F:/Projet%20Réseau/delivery-optimization-api/src/main/resources/db/changelog/v1/007-extended-test-data.sql
+2026-01-24T11:42:56.781+01:00  WARN 37396 --- [delivery-optimization-api] [           main] liquibase.integration                    : Found 2 files with the path 'db/changelog/v1/007-extended-test-data.sql':
+    - file:/F:/Projet%20RÃ©seau/delivery-optimization-api/src/main/resources/db/changelog/v1/007-extended-test-data.sql
+    - jar:nested:/F:/Projet%20RÃ©seau/delivery-optimization-api/target/optimization-api-0.0.1-SNAPSHOT.jar/!BOOT-INF/classes/!/db/changelog/v1/007-extended-test-data.sql
+  Search Path: 
+    - Spring classpath
+  You can limit the search path to remove duplicates with the liquibase.searchPath setting.
+  To fail when duplicates are found, set liquibase.duplicateFileMode=ERROR
+  Choosing: file:/F:/Projet%20RÃ©seau/delivery-optimization-api/src/main/resources/db/changelog/v1/007-extended-test-data.sql
+Found 2 files with the path 'db/changelog/v1/007-extended-test-data.sql':
+    - file:/F:/Projet%20Réseau/delivery-optimization-api/src/main/resources/db/changelog/v1/007-extended-test-data.sql
+    - jar:nested:/F:/Projet%20Réseau/delivery-optimization-api/target/optimization-api-0.0.1-SNAPSHOT.jar/!BOOT-INF/classes/!/db/changelog/v1/007-extended-test-data.sql
+  Search Path: 
+    - Spring classpath
+  You can limit the search path to remove duplicates with the liquibase.searchPath setting.
+  To fail when duplicates are found, set liquibase.duplicateFileMode=ERROR
+  Choosing: file:/F:/Projet%20Réseau/delivery-optimization-api/src/main/resources/db/changelog/v1/007-extended-test-data.sql
+2026-01-24T11:42:56.784+01:00  WARN 37396 --- [delivery-optimization-api] [           main] liquibase.integration                    : Found 2 files with the path 'db/changelog/v1/007-extended-test-data.sql':
+    - file:/F:/Projet%20RÃ©seau/delivery-optimization-api/src/main/resources/db/changelog/v1/007-extended-test-data.sql
+    - jar:nested:/F:/Projet%20RÃ©seau/delivery-optimization-api/target/optimization-api-0.0.1-SNAPSHOT.jar/!BOOT-INF/classes/!/db/changelog/v1/007-extended-test-data.sql
+  Search Path: 
+    - Spring classpath
+  You can limit the search path to remove duplicates with the liquibase.searchPath setting.
+  To fail when duplicates are found, set liquibase.duplicateFileMode=ERROR
+  Choosing: file:/F:/Projet%20RÃ©seau/delivery-optimization-api/src/main/resources/db/changelog/v1/007-extended-test-data.sql
+Found 2 files with the path 'db/changelog/v1/007-extended-test-data.sql':
+    - file:/F:/Projet%20Réseau/delivery-optimization-api/src/main/resources/db/changelog/v1/007-extended-test-data.sql
+    - jar:nested:/F:/Projet%20Réseau/delivery-optimization-api/target/optimization-api-0.0.1-SNAPSHOT.jar/!BOOT-INF/classes/!/db/changelog/v1/007-extended-test-data.sql
+  Search Path: 
+    - Spring classpath
+  You can limit the search path to remove duplicates with the liquibase.searchPath setting.
+  To fail when duplicates are found, set liquibase.duplicateFileMode=ERROR
+  Choosing: file:/F:/Projet%20Réseau/delivery-optimization-api/src/main/resources/db/changelog/v1/007-extended-test-data.sql
+2026-01-24T11:42:56.786+01:00  WARN 37396 --- [delivery-optimization-api] [           main] liquibase.integration                    : Found 2 files with the path 'db/changelog/v1/007-extended-test-data.sql':
+    - file:/F:/Projet%20RÃ©seau/delivery-optimization-api/src/main/resources/db/changelog/v1/007-extended-test-data.sql
+    - jar:nested:/F:/Projet%20RÃ©seau/delivery-optimization-api/target/optimization-api-0.0.1-SNAPSHOT.jar/!BOOT-INF/classes/!/db/changelog/v1/007-extended-test-data.sql
+  Search Path: 
+    - Spring classpath
+  You can limit the search path to remove duplicates with the liquibase.searchPath setting.
+  To fail when duplicates are found, set liquibase.duplicateFileMode=ERROR
+  Choosing: file:/F:/Projet%20RÃ©seau/delivery-optimization-api/src/main/resources/db/changelog/v1/007-extended-test-data.sql
+2026-01-24T11:42:57.044+01:00  INFO 37396 --- [delivery-optimization-api] [           main] liquibase.changelog                      : Reading from public.databasechangelog
+2026-01-24T11:42:57.279+01:00  INFO 37396 --- [delivery-optimization-api] [           main] liquibase.lockservice                    : Successfully acquired change log lock
+2026-01-24T11:42:57.284+01:00  INFO 37396 --- [delivery-optimization-api] [           main] liquibase.command                        : Using deploymentId: 9251377283
+2026-01-24T11:42:57.289+01:00  INFO 37396 --- [delivery-optimization-api] [           main] liquibase.changelog                      : Reading from public.databasechangelog
+Running Changeset: db/changelog/v1/008-dummy-deliveries.sql::raw::includeAll
+2026-01-24T11:42:57.425+01:00  INFO 37396 --- [delivery-optimization-api] [           main] liquibase.changelog                      : Custom SQL executed
+2026-01-24T11:42:57.428+01:00  INFO 37396 --- [delivery-optimization-api] [           main] liquibase.changelog                      : ChangeSet db/changelog/v1/008-dummy-deliveries.sql::raw::includeAll ran successfully in 51ms
+2026-01-24T11:42:57.454+01:00  INFO 37396 --- [delivery-optimization-api] [           main] liquibase.util                           : UPDATE SUMMARY
+2026-01-24T11:42:57.455+01:00  INFO 37396 --- [delivery-optimization-api] [           main] liquibase.util                           : Run:                          1
+2026-01-24T11:42:57.456+01:00  INFO 37396 --- [delivery-optimization-api] [           main] liquibase.util                           : Previously run:               7
+2026-01-24T11:42:57.456+01:00  INFO 37396 --- [delivery-optimization-api] [           main] liquibase.util                           : Filtered out:                 0
+2026-01-24T11:42:57.456+01:00  INFO 37396 --- [delivery-optimization-api] [           main] liquibase.util                           : -------------------------------
+2026-01-24T11:42:57.457+01:00  INFO 37396 --- [delivery-optimization-api] [           main] liquibase.util                           : Total change sets:            8
+2026-01-24T11:42:57.458+01:00  INFO 37396 --- [delivery-optimization-api] [           main] liquibase.util                           : Update summary generated
+2026-01-24T11:42:57.463+01:00  INFO 37396 --- [delivery-optimization-api] [           main] liquibase.command                        : Update command completed successfully.
+Liquibase: Update has been successful. Rows affected: 9
+2026-01-24T11:42:57.471+01:00  INFO 37396 --- [delivery-optimization-api] [           main] liquibase.lockservice                    : Successfully released change log lock
+2026-01-24T11:42:57.473+01:00  INFO 37396 --- [delivery-optimization-api] [           main] liquibase.command                        : Command execution complete
+2026-01-24T11:42:57.787+01:00  INFO 37396 --- [delivery-optimization-api] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 4 endpoint(s) beneath base path '/actuator'
+2026-01-24T11:42:57.955+01:00  WARN 37396 --- [delivery-optimization-api] [           main] ConfigServletWebServerApplicationContext : Exception encountered during context initialization - cancelling refresh attempt: org.springframework.context.ApplicationContextException: Failed to start bean 'webServerStartStop'
+2026-01-24T11:42:58.028+01:00  INFO 37396 --- [delivery-optimization-api] [           main] .s.b.a.l.ConditionEvaluationReportLogger : 
+
+Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
+2026-01-24T11:42:58.078+01:00 ERROR 37396 --- [delivery-optimization-api] [           main] o.s.b.d.LoggingFailureAnalysisReporter   : 
+
+***************************
+APPLICATION FAILED TO START
+***************************
+
+Description:
+
+Web server failed to start. Port 8080 was already in use.
+
+Action:
+
+Identify and stop the process that's listening on port 8080 or configure this application to listen on another port.
+

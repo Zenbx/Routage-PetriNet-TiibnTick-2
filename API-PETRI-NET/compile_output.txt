@@ -1,0 +1,19 @@
+﻿[INFO] Scanning for projects...
+[INFO] 
+[INFO] ----------------------< com.yowyob:petri-net-api >----------------------
+[INFO] Building petri-net-api 1.0.0-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ petri-net-api ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ petri-net-api ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  1.852 s
+[INFO] Finished at: 2026-01-18T18:31:05+01:00
+[INFO] ------------------------------------------------------------------------

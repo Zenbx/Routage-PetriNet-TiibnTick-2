@@ -1,0 +1,33 @@
+﻿
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.4.0)
+
+2026-01-24T01:58:10.171+01:00  INFO 117148 --- [petri-net-api] [           main] c.yowyob.petrinet.PetriNetApplication    : Starting PetriNetApplication v1.0.0-SNAPSHOT using Java 21.0.9 with PID 117148 (F:\Projet R├®seau\API-PETRI-NET\target\petri-net-api-1.0.0-SNAPSHOT.jar started by USER in F:\Projet R├®seau\API-PETRI-NET)
+2026-01-24T01:58:10.175+01:00 DEBUG 117148 --- [petri-net-api] [           main] c.yowyob.petrinet.PetriNetApplication    : Running with Spring Boot v3.4.0, Spring v6.2.0
+2026-01-24T01:58:10.176+01:00  INFO 117148 --- [petri-net-api] [           main] c.yowyob.petrinet.PetriNetApplication    : No active profile set, falling back to 1 default profile: "default"
+2026-01-24T01:58:11.362+01:00  INFO 117148 --- [petri-net-api] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data R2DBC repositories in DEFAULT mode.
+2026-01-24T01:58:11.635+01:00  INFO 117148 --- [petri-net-api] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 264 ms. Found 5 R2DBC repository interfaces.
+2026-01-24T01:58:16.801+01:00  WARN 117148 --- [petri-net-api] [           main] onfigReactiveWebServerApplicationContext : Exception encountered during context initialization - cancelling refresh attempt: org.springframework.context.ApplicationContextException: Failed to start bean 'webServerStartStop'
+2026-01-24T01:58:16.837+01:00  INFO 117148 --- [petri-net-api] [           main] .s.b.a.l.ConditionEvaluationReportLogger : 
+
+Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
+2026-01-24T01:58:16.857+01:00 ERROR 117148 --- [petri-net-api] [           main] o.s.b.d.LoggingFailureAnalysisReporter   : 
+
+***************************
+APPLICATION FAILED TO START
+***************************
+
+Description:
+
+Web server failed to start. Port 8080 was already in use.
+
+Action:
+
+Identify and stop the process that's listening on port 8080 or configure this application to listen on another port.
+

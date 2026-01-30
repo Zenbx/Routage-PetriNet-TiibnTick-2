@@ -1,0 +1,192 @@
+# Render Blueprint pour TiibnTick - Système Pick and Drop
+# Déploiement complet: PostgreSQL + API Petri Net + Delivery API + Frontend
+
+databases:
+  - name: tiibntick-postgres
+    databaseName: tiibntick_main
+    user: tiibntick_user
+    plan: starter # Free tier - peut être upgradé
+    region: frankfurt # Choisir selon votre localisation
+    postgresMajorVersion: 15
+
+services:
+  # ===== API Petri Net - Gestion des workflows d'états =====
+  - type: web
+    name: tiibntick-petri-api
+    runtime: java
+    plan: starter # Free tier
+    region: frankfurt
+    buildCommand: |
+      cd API-PETRI-NET &&
+      ./mvnw clean package -DskipTests
+    startCommand: |
+      cd API-PETRI-NET &&
+      java -Dserver.port=$PORT \
+           -Xms256m -Xmx512m \
+           -jar target/*.jar
+    envVars:
+      - key: DB_HOST
+        fromDatabase:
+          name: tiibntick-postgres
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: tiibntick-postgres
+          property: port
+      - key: DB_NAME
+        value: petri_db
+      - key: DB_USER
+        fromDatabase:
+          name: tiibntick-postgres
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: tiibntick-postgres
+          property: password
+      - key: SPRING_R2DBC_URL
+        value: r2dbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: JAVA_OPTS
+        value: -Xms256m -Xmx512m
+    healthCheckPath: /api/nets/health
+    autoDeploy: true
+
+  # ===== Delivery Optimization API - Coeur métier =====
+  - type: web
+    name: tiibntick-delivery-api
+    runtime: java
+    plan: starter # Free tier
+    region: frankfurt
+    buildCommand: |
+      cd delivery-optimization-api &&
+      ./mvnw clean package -DskipTests
+    startCommand: |
+      cd delivery-optimization-api &&
+      java -Dserver.port=$PORT \
+           -Xms512m -Xmx1024m \
+           -jar target/*.jar
+    envVars:
+      - key: DB_HOST
+        fromDatabase:
+          name: tiibntick-postgres
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: tiibntick-postgres
+          property: port
+      - key: DB_NAME
+        value: delivery_db
+      - key: DB_USER
+        fromDatabase:
+          name: tiibntick-postgres
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: tiibntick-postgres
+          property: password
+      - key: SPRING_R2DBC_URL
+        value: r2dbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+      - key: SPRING_LIQUIBASE_URL
+        value: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+      - key: SPRING_DATASOURCE_USERNAME
+        fromDatabase:
+          name: tiibntick-postgres
+          property: user
+      - key: SPRING_DATASOURCE_PASSWORD
+        fromDatabase:
+          name: tiibntick-postgres
+          property: password
+      - key: PETRI_NET_API_URL
+        fromService:
+          name: tiibntick-petri-api
+          type: web
+          property: url
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: SPRING_LIQUIBASE_ENABLED
+        value: true
+      - key: SERVER_PORT
+        value: $PORT
+      - key: JAVA_OPTS
+        value: -Xms512m -Xmx1024m
+    healthCheckPath: /actuator/health
+    autoDeploy: true
+
+  # ===== Frontend Next.js - Interface utilisateur =====
+  - type: web
+    name: tiibntick-frontend
+    runtime: node
+    plan: starter # Free tier
+    region: frankfurt
+    buildCommand: |
+      cd delivery-optimization-frontend &&
+      npm install &&
+      npm run build
+    startCommand: |
+      cd delivery-optimization-frontend &&
+      npm run start
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          name: tiibntick-delivery-api
+          type: web
+          property: url
+      - key: NEXT_PUBLIC_WS_URL
+        value: ${NEXT_PUBLIC_API_URL}/ws # WebSocket utilise même URL
+      - key: NEXT_PUBLIC_PETRI_NET_API_URL
+        fromService:
+          name: tiibntick-petri-api
+          type: web
+          property: url
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: $PORT
+    healthCheckPath: /
+    autoDeploy: true
+
+# ===== Instructions Post-Déploiement =====
+#
+# 1. Créer les bases de données manuellement sur Render:
+#    - Aller dans tiibntick-postgres
+#    - Se connecter avec psql ou pgAdmin
+#    - Exécuter:
+#      CREATE DATABASE delivery_db;
+#      CREATE DATABASE petri_db;
+#
+# 2. Les migrations Liquibase s'exécuteront automatiquement au démarrage de delivery-api
+#
+# 3. URLs des services (après déploiement):
+#    - Frontend: https://tiibntick-frontend.onrender.com
+#    - Delivery API: https://tiibntick-delivery-api.onrender.com
+#    - Petri API: https://tiibntick-petri-api.onrender.com
+#
+# 4. Ajuster les plans selon besoins:
+#    - starter: Gratuit (limité)
+#    - standard: 7$/mois par service
+#    - pro: Plus de ressources
+#
+# 5. Variables d'environnement sensibles:
+#    - Ajouter via Render Dashboard pour la sécurité
+#    - Ne pas commiter les secrets dans le code
+#
+# 6. Monitoring:
+#    - Prometheus: https://tiibntick-delivery-api.onrender.com/actuator/prometheus
+#    - Health: /actuator/health (delivery-api), /api/nets/health (petri-api)
+#
+# 7. Logs:
+#    - Accessibles via Render Dashboard
+#    - Format JSON pour faciliter l'analyse
+#
+# 8. Scaling:
+#    - Horizontal: Augmenter nombre d'instances
+#    - Vertical: Upgrade vers plan supérieur
+#
+# 9. Custom Domains (optionnel):
+#    - Configurer via Render Dashboard
+#    - Exemple: api.tiibntick.com, app.tiibntick.com
+#
+# 10. Backup Base de Données:
+#     - Automatique sur plans payants
+#     - Manuel: pg_dump via psql

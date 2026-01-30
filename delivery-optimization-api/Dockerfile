@@ -3,7 +3,9 @@ COPY src /home/app/src
 COPY pom.xml /home/app
 RUN mvn -f /home/app/pom.xml clean package -DskipTests
 
-FROM openjdk:17-jdk-slim
+FROM eclipse-temurin:17-jre-alpine
+WORKDIR /app
 COPY --from=build /home/app/target/*.jar app.jar
 EXPOSE 8080
-ENTRYPOINT ["java","-jar","/app.jar"]
+ENV PORT=8080
+ENTRYPOINT ["sh", "-c", "java -Xmx1024m -Xms512m -Dserver.port=${PORT} -Djava.security.egd=file:/dev/./urandom -jar app.jar"]

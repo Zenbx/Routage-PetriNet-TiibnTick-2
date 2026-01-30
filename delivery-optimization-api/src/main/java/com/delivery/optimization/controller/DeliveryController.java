@@ -8,6 +8,13 @@ import com.delivery.optimization.service.ETAService;
 import com.delivery.optimization.service.ReroutingService;
 import com.delivery.optimization.service.StateTransitionService;
 import com.delivery.optimization.repository.DeliveryRepository;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
@@ -18,6 +25,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/delivery")
 @RequiredArgsConstructor
+@Tag(name = "Deliveries", description = "Gestion complète des livraisons")
 public class DeliveryController {
 
     private final ETAService etaService;
@@ -26,16 +34,43 @@ public class DeliveryController {
     private final DeliveryRepository deliveryRepository;
 
     @GetMapping
+    @Operation(
+        summary = "Récupérer toutes les livraisons",
+        description = "Retourne la liste complète de toutes les livraisons avec leurs informations (statut, client, position, etc.)"
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Liste des livraisons récupérée avec succès",
+                     content = @Content(schema = @Schema(implementation = Delivery.class)))
+    })
     public Flux<Delivery> getAllDeliveries() {
         return deliveryRepository.findAll();
     }
 
     @GetMapping("/{id}")
-    public Mono<Delivery> getDeliveryById(@PathVariable String id) {
+    @Operation(
+        summary = "Récupérer une livraison par ID",
+        description = "Retourne les détails complets d'une livraison spécifique"
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Livraison trouvée",
+                     content = @Content(schema = @Schema(implementation = Delivery.class))),
+        @ApiResponse(responseCode = "404", description = "Livraison non trouvée")
+    })
+    public Mono<Delivery> getDeliveryById(
+        @Parameter(description = "ID unique de la livraison", required = true, example = "DEL-001")
+        @PathVariable String id
+    ) {
         return deliveryRepository.findById(id);
     }
 
     @GetMapping("/stats")
+    @Operation(
+        summary = "Statistiques globales",
+        description = "Retourne les métriques agrégées: nombre total, livraisons actives, taux de succès, économies"
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Statistiques calculées avec succès")
+    })
     public Mono<Map<String, Object>> getSummaryStats() {
         return deliveryRepository.count()
                 .defaultIfEmpty(0L)
@@ -61,13 +96,65 @@ public class DeliveryController {
                 });
     }
 
+    @GetMapping("/{id}/eta")
+    @Operation(
+        summary = "Obtenir l'ETA actuel d'une livraison",
+        description = "Retourne l'estimation de temps d'arrivée calculée par le filtre de Kalman avec intervalle de confiance"
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "ETA calculé avec succès",
+                     content = @Content(schema = @Schema(implementation = ETAResponse.class))),
+        @ApiResponse(responseCode = "404", description = "Livraison non trouvée")
+    })
+    public Mono<ETAResponse> getETA(
+        @Parameter(description = "ID de la livraison", required = true, example = "DEL-001")
+        @PathVariable String id
+    ) {
+        return etaService.getLatestStats(id);
+    }
+
     @PostMapping("/{id}/eta/update")
-    public Mono<ETAResponse> updateETA(@PathVariable String id, @RequestBody ETAUpdateRequest request) {
+    @Operation(
+        summary = "Mettre à jour l'ETA avec données GPS",
+        description = "Applique le filtre de Kalman avec nouvelles données de tracking (vitesse, distance parcourue) pour recalculer l'ETA"
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "ETA mis à jour avec succès",
+                     content = @Content(schema = @Schema(implementation = ETAResponse.class))),
+        @ApiResponse(responseCode = "400", description = "Données de mise à jour invalides"),
+        @ApiResponse(responseCode = "404", description = "Livraison non trouvée")
+    })
+    public Mono<ETAResponse> updateETA(
+        @Parameter(description = "ID de la livraison", required = true, example = "DEL-001")
+        @PathVariable String id,
+        @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            description = "Données GPS de tracking (vitesse, distance parcourue, timestamp)",
+            required = true
+        )
+        @RequestBody ETAUpdateRequest request
+    ) {
         return etaService.updateETA(id, request);
     }
 
     @PostMapping("/{id}/reroute")
-    public Mono<RerouteResponse> checkReroute(@PathVariable String id, @RequestBody Map<String, Object> request) {
+    @Operation(
+        summary = "Vérifier le besoin de reroutage",
+        description = "Analyse les conditions actuelles (trafic, délai) et détermine si un recalcul de route est nécessaire avec hystérésis"
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Analyse effectuée",
+                     content = @Content(schema = @Schema(implementation = RerouteResponse.class))),
+        @ApiResponse(responseCode = "404", description = "Livraison non trouvée")
+    })
+    public Mono<RerouteResponse> checkReroute(
+        @Parameter(description = "ID de la livraison", required = true, example = "DEL-001")
+        @PathVariable String id,
+        @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            description = "Données de contexte pour l'analyse (optionnel)",
+            required = false
+        )
+        @RequestBody Map<String, Object> request
+    ) {
         // Simple logic for the demo
         return Mono.just(RerouteResponse.builder()
                 .rerouteRequired(false)
@@ -77,7 +164,25 @@ public class DeliveryController {
     }
 
     @PostMapping("/{id}/state-transition")
-    public Mono<Delivery> transition(@PathVariable String id, @RequestBody Map<String, Object> body) {
+    @Operation(
+        summary = "Effectuer une transition d'état",
+        description = "Change le statut de la livraison (PENDING → ASSIGNED → IN_TRANSIT → DELIVERED/FAILED) avec validation Petri Net"
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Transition effectuée avec succès",
+                     content = @Content(schema = @Schema(implementation = Delivery.class))),
+        @ApiResponse(responseCode = "400", description = "Transition invalide (non autorisée par Petri Net)"),
+        @ApiResponse(responseCode = "404", description = "Livraison non trouvée")
+    })
+    public Mono<Delivery> transition(
+        @Parameter(description = "ID de la livraison", required = true, example = "DEL-001")
+        @PathVariable String id,
+        @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            description = "Événement de transition: ASSIGN, START, COMPLETE, FAIL",
+            required = true
+        )
+        @RequestBody Map<String, Object> body
+    ) {
         String event = (String) body.get("event");
         return stateTransitionService.transitionState(id, event, Instant.now());
     }

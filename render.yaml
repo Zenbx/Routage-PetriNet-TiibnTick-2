@@ -3,13 +3,40 @@
 
 databases:
   - name: tiibntick-postgres
-    databaseName: tiibntick_main
+    databaseName: postgres # Base par défaut
     user: tiibntick_user
     plan: starter # Free tier - peut être upgradé
     region: frankfurt # Choisir selon votre localisation
     postgresMajorVersion: 15
 
 services:
+  # ===== Script d'initialisation DB - Crée delivery_db et petri_db =====
+  - type: worker
+    name: tiibntick-db-init
+    runtime: docker
+    plan: starter
+    region: frankfurt
+    dockerfilePath: ./db-init/Dockerfile
+    dockerContext: ./db-init
+    envVars:
+      - key: PGHOST
+        fromDatabase:
+          name: tiibntick-postgres
+          property: host
+      - key: PGPORT
+        fromDatabase:
+          name: tiibntick-postgres
+          property: port
+      - key: PGUSER
+        fromDatabase:
+          name: tiibntick-postgres
+          property: user
+      - key: PGPASSWORD
+        fromDatabase:
+          name: tiibntick-postgres
+          property: password
+    # Ce worker s'exécute une fois au déploiement et crée les deux bases
+
   # ===== API Petri Net - Gestion des workflows d'états =====
   - type: web
     name: tiibntick-petri-api
@@ -105,7 +132,7 @@ services:
       - key: SPRING_PROFILES_ACTIVE
         value: prod
       - key: SPRING_LIQUIBASE_ENABLED
-        value: true
+        value: "true"
       - key: SERVER_PORT
         value: $PORT
       - key: JAVA_OPTS
@@ -145,48 +172,3 @@ services:
         value: $PORT
     healthCheckPath: /
     autoDeploy: true
-
-# ===== Instructions Post-Déploiement =====
-#
-# 1. Créer les bases de données manuellement sur Render:
-#    - Aller dans tiibntick-postgres
-#    - Se connecter avec psql ou pgAdmin
-#    - Exécuter:
-#      CREATE DATABASE delivery_db;
-#      CREATE DATABASE petri_db;
-#
-# 2. Les migrations Liquibase s'exécuteront automatiquement au démarrage de delivery-api
-#
-# 3. URLs des services (après déploiement):
-#    - Frontend: https://tiibntick-frontend.onrender.com
-#    - Delivery API: https://tiibntick-delivery-api.onrender.com
-#    - Petri API: https://tiibntick-petri-api.onrender.com
-#
-# 4. Ajuster les plans selon besoins:
-#    - starter: Gratuit (limité)
-#    - standard: 7$/mois par service
-#    - pro: Plus de ressources
-#
-# 5. Variables d'environnement sensibles:
-#    - Ajouter via Render Dashboard pour la sécurité
-#    - Ne pas commiter les secrets dans le code
-#
-# 6. Monitoring:
-#    - Prometheus: https://tiibntick-delivery-api.onrender.com/actuator/prometheus
-#    - Health: /actuator/health (delivery-api), /api/nets/health (petri-api)
-#
-# 7. Logs:
-#    - Accessibles via Render Dashboard
-#    - Format JSON pour faciliter l'analyse
-#
-# 8. Scaling:
-#    - Horizontal: Augmenter nombre d'instances
-#    - Vertical: Upgrade vers plan supérieur
-#
-# 9. Custom Domains (optionnel):
-#    - Configurer via Render Dashboard
-#    - Exemple: api.tiibntick.com, app.tiibntick.com
-#
-# 10. Backup Base de Données:
-#     - Automatique sur plans payants
-#     - Manuel: pg_dump via psql

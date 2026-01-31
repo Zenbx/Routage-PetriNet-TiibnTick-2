@@ -77,11 +77,13 @@ public class PetriNetClient {
     /**
      * Obtient l'état actuel du réseau de Petri pour une livraison
      */
+    @SuppressWarnings("unchecked")
     public Mono<Map<String, Object>> getNetState(String deliveryId) {
         return petriNetWebClient.get()
                 .uri("/api/nets/{id}", deliveryId)
                 .retrieve()
                 .bodyToMono(Map.class)
+                .map(map -> (Map<String, Object>) map)
                 .doOnSuccess(state -> log.debug("Retrieved Petri Net state for delivery {}: {}", deliveryId, state))
                 .doOnError(error -> log.error("Failed to get Petri Net state: {}", error.getMessage()))
                 .onErrorResume(error -> Mono.just(Collections.emptyMap()));

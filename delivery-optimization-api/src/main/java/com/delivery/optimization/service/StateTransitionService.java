@@ -59,13 +59,8 @@ public class StateTransitionService {
                                 .then(Mono.defer(() -> {
                                     log.info("Petri Net validation passed for {} → {}", oldStatus, newStatus);
                                     delivery.setStatus(status);
-                                    // Mettre à jour les timestamps selon le statut
-                                    if (status == Delivery.DeliveryStatus.IN_TRANSIT && delivery.getActualStartTime() == null) {
-                                        delivery.setActualStartTime(timestamp);
-                                    }
-                                    if (status == Delivery.DeliveryStatus.DELIVERED && delivery.getActualEndTime() == null) {
-                                        delivery.setActualEndTime(timestamp);
-                                    }
+                                    // Note: actualStartTime et actualEndTime ne sont pas dans Delivery
+                                    // Le tracking temporel est géré via createdAt et ETA
                                     return deliveryRepository.save(delivery);
                                 }));
 

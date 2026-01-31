@@ -1,0 +1,14 @@
+{
+  "name": "tiibntick-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "cd delivery-optimization-frontend && npm install && npm run build",
+    "start": "cd delivery-optimization-frontend && npm run start",
+    "dev": "cd delivery-optimization-frontend && npm run dev"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}

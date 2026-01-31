@@ -7,5 +7,4 @@ FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 COPY --from=build /home/app/target/*.jar app.jar
 EXPOSE 8080
-ENV PORT=8080
-ENTRYPOINT ["sh", "-c", "java -Xmx1024m -Xms512m -Dserver.port=${PORT} -Djava.security.egd=file:/dev/./urandom -jar app.jar"]
+ENTRYPOINT ["sh", "-c", "java -Xmx1024m -Xms512m -Dserver.port=${PORT:-8080} -Djava.security.egd=file:/dev/./urandom -jar app.jar"]

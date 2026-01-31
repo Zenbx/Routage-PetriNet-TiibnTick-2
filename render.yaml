@@ -1,5 +1,9 @@
 # Render Blueprint pour TiibnTick - Système Pick and Drop
 # Déploiement complet: PostgreSQL + API Petri Net + Delivery API + Frontend
+#
+# ⚠️  ATTENTION: Render n'a plus de plan gratuit (Starter = $7/service)
+# ℹ️  Pour déploiement GRATUIT, utiliser Railway: voir GUIDE_DEPLOIEMENT_RAILWAY.md
+# ℹ️  Ce fichier est conservé pour référence et déploiement payant sur Render
 
 databases:
   - name: tiibntick-postgres

@@ -1,0 +1,52 @@
+# Railway Ignore - Fichiers à exclure des builds
+
+# Node modules (sera réinstallé)
+node_modules/
+.next/
+out/
+
+# Build artifacts Java
+target/
+build/
+*.class
+
+# IDE
+.idea/
+.vscode/
+*.iml
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# Environment files
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Git
+.git/
+.gitignore
+
+# Documentation (pas nécessaire au runtime)
+*.md
+!README.md
+
+# Tests
+**/*Test.java
+**/*test.ts
+**/*test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+*.test.js
+
+# Temporary files
+*.tmp
+*.swp
+*.bak
+nul
+
+# Maven wrapper jar (sera téléchargé)
+.mvn/wrapper/maven-wrapper.jar

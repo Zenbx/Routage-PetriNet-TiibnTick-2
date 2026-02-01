@@ -38,9 +38,3 @@ INSERT INTO tour_stops (tour_id, node_id, stop_order, stop_type) VALUES
 ('tour_2', 'client_7', 2, 'PICKUP'),
 ('tour_2', 'client_8', 3, 'DROPOFF')
 ON CONFLICT (tour_id, stop_order) DO NOTHING;
-
--- 5. Kalman States (for Analytics)
-INSERT INTO kalman_states (delivery_id, distance_covered, estimated_speed, traffic_bias, variance) VALUES
-('del_12', 5.0, 45.0, 1.1, 0.5),
-('del_17', 2.5, 30.0, 1.2, 0.8)
-ON CONFLICT (delivery_id, timestamp) DO NOTHING;

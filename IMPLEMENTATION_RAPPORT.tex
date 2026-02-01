@@ -1,0 +1,459 @@
+\chapter{Implémentation et Travaux en Cours}
+
+Ce chapitre présente l'architecture logicielle et les choix techniques retenus pour l'implémentation du système de \textbf{Collecte et Livraison} adapté au contexte camerounais. L'approche adoptée privilégie la modularité, la résilience face aux défaillances réseau, et la scalabilité horizontale pour accompagner la croissance future de la plateforme. Les solutions techniques sélectionnées répondent aux contraintes spécifiques identifiées dans l'état de l'art, notamment la variabilité de la connectivité mobile, l'hétérogénéité des terminaux utilisés, et la nécessité d'un fonctionnement en mode dégradé lors de coupures réseau.
+
+\section{Architecture du Système}
+
+\subsection{Vue d'Ensemble et Principes Directeurs}
+
+Le système développé, désigné sous le nom de code \textbf{TiibnTick}, constitue une plateforme web d'optimisation logistique résolvant le \textbf{Vehicle Routing Problem} (VRP) avec gestion formelle d'états via \textbf{Réseaux de Petri}. L'architecture adopte un modèle à trois couches découplées : une couche présentation (frontend), une couche métier (API de livraison), et une couche de gestion d'états (API Petri Net). Cette séparation architecturale garantit l'indépendance des composants, facilite la maintenance évolutive, et permet le déploiement distribué sur plusieurs serveurs selon la charge.
+
+Les principes directeurs ayant guidé les choix architecturaux sont les suivants. La \textbf{programmation réactive} est privilégiée pour maximiser l'utilisation des ressources serveur dans un contexte de connexions concurrentes nombreuses et potentiellement instables. La \textbf{communication temps réel} via WebSocket assure la synchronisation immédiate des états entre coursiers, clients et administrateurs, élément crucial pour la coordination des tournées. La \textbf{persistance non-bloquante} garantit que les opérations d'accès à la base de données ne monopolisent pas les threads d'exécution, préservant ainsi la réactivité globale du système même sous charge élevée.
+
+\subsection{Architecture Globale à Trois Couches}
+
+L'architecture globale s'articule autour de trois composants principaux interagissant via des protocoles standardisés. Le schéma d'architecture détaillé est présenté dans la figure \ref{fig:architecture_globale}.
+
+La \textbf{couche présentation} (frontend) est développée avec le framework \textit{Next.js 14} et s'exécute côté client dans le navigateur web. Cette couche expose quatre modules fonctionnels principaux : le tableau de bord de supervision (Dashboard), la visualisation du réseau routier (Network), la gestion des livraisons (Deliveries), et l'analyse des performances (Analytics). La cartographie interactive repose sur la bibliothèque \textit{Leaflet 1.9.4}, offrant une alternative open-source performante aux solutions propriétaires comme \textit{Google Maps}. Ce choix présente un double avantage pour le déploiement camerounais : absence de coûts de licence récurrents et possibilité d'utilisation de tuiles cartographiques locales en cas d'indisponibilité des serveurs internationaux.
+
+La \textbf{couche métier} (API Delivery Optimization) centralise la logique d'optimisation de tournées et de routage. Développée avec \textit{Spring Boot 3.2.2} en mode réactif (\textit{WebFlux}), elle expose huit contrôleurs REST gérant respectivement les livraisons, le graphe routier, le routage, les tournées, les simulations, les conducteurs, le suivi en temps réel, et la communication WebSocket. Cette API implémente les algorithmes décrits au chapitre 3, notamment A* pour le plus court chemin, le solveur VRP pour l'optimisation des tournées, et le filtre de Kalman pour l'estimation dynamique de l'ETA.
+
+La \textbf{couche de gestion d'états} (API Petri Net) constitue un microservice dédié à la modélisation formelle des workflows de livraison via des Réseaux de Petri. Cette séparation architecturale présente plusieurs avantages : réutilisabilité du composant pour d'autres systèmes nécessitant une gestion d'états formelle, isolation des pannes (une défaillance de ce service n'affecte pas le calcul de routes), et possibilité d'évolution indépendante du modèle de workflow sans impacter la logique métier.
+
+\subsection{Architecture Frontend}
+
+Le frontend adopte une architecture \textbf{Progressive Web Application} (PWA) permettant une expérience utilisateur comparable aux applications natives tout en conservant les avantages du web (déploiement instantané sans passage par les stores, compatibilité multi-plateformes). Ce choix architectural répond directement aux contraintes du marché camerounais identifiées dans l'état de l'art\cite{datareportal_cm} : fragmentation des systèmes d'exploitation mobiles, coût prohibitif du développement multi-plateformes (iOS + Android), et limitation de l'espace de stockage sur les terminaux d'entrée de gamme.
+
+L'architecture frontend repose sur le patron \textbf{App Router} de Next.js 14, exploitant les Server Components pour optimiser les performances initiales. La gestion d'état global utilise \textit{Zustand 4.5}, une bibliothèque minimaliste évitant la complexité de Redux tout en garantissant une gestion cohérente des données partagées. Le cache des requêtes API est géré par \textit{React Query 5.17}, implémentant automatiquement les stratégies de invalidation, de re-fetch en arrière-plan, et de mode optimiste pour améliorer la perception de réactivité.
+
+Les \textbf{Service Workers} constituent un élément crucial de l'architecture PWA. Ils assurent trois fonctions essentielles : mise en cache proactive des ressources statiques (scripts, feuilles de style, tuiles cartographiques) pour permettre le fonctionnement hors ligne, interception des requêtes réseau pour servir les données en cache si le serveur est inaccessible, et synchronisation différée des modifications effectuées en mode déconnecté. Cette architecture tolérante aux pannes répond directement à la problématique de connectivité intermittente observée dans les zones périurbaines camerounaises\cite{datareportal_cm}.
+
+La visualisation cartographique s'appuie sur \textit{React-Leaflet 4.2.1}, wrapper React de la bibliothèque Leaflet. Les couches cartographiques utilisées combinent les tuiles OpenStreetMap pour le fond de carte et des overlays personnalisés pour les nœuds du réseau (clients, relais, dépôts), les arcs avec leur coût composite, et les trajectoires des véhicules en temps réel. La bibliothèque \textit{Recharts 2.10} assure la visualisation des métriques de performance sous forme de graphiques interactifs (évolution de l'ETA, répartition des coûts, statistiques de livraison).
+
+\subsection{Architecture Backend}
+
+L'architecture backend adopte le paradigme de \textbf{programmation réactive} via le framework \textit{Spring WebFlux}. Contrairement au modèle traditionnel \textit{Spring MVC} qui alloue un thread par requête HTTP (modèle thread-per-request bloquant), WebFlux repose sur un modèle événementiel non-bloquant basé sur \textit{Project Reactor}. Cette approche présente des avantages décisifs pour le contexte camerounais où la latence réseau est élevée et variable\cite{datareportal_cm}.
+
+Le modèle réactif manipule deux types primitifs : \texttt{Mono<T>} représentant 0 ou 1 élément asynchrone, et \texttt{Flux<T>} représentant un flux de 0 à N éléments. Ces abstractions permettent de composer des pipelines de traitement non-bloquants avec contrôle automatique de la contre-pression (backpressure), évitant ainsi la saturation mémoire en cas de production de données plus rapide que leur consommation. Un thread pool réduit (typiquement dimensionné au nombre de cœurs CPU) suffit à gérer plusieurs milliers de connexions concurrentes, contrairement au modèle classique nécessitant un thread par connexion.
+
+La persistance des données utilise \textbf{R2DBC} (Reactive Relational Database Connectivity), alternative réactive à JDBC. Les repositories Spring Data R2DBC retournent des types \texttt{Mono} et \texttt{Flux}, garantissant que les accès base de données n'engendrent jamais de blocage des threads. La base de données \textit{PostgreSQL 15} est étendue avec \textit{PostGIS}, extension géospatiale permettant le stockage de géométries (type \texttt{POINT} pour les coordonnées GPS) et le calcul de distances orthodromiques via la formule de Haversine directement en SQL.
+
+Les migrations de schéma sont gérées par \textit{Liquibase Core}, garantissant la traçabilité et la reproductibilité des évolutions de base de données. Chaque modification structurelle (ajout de table, colonne, index) est versionnée et appliquée automatiquement au démarrage de l'application, évitant les dérives entre environnements de développement, test et production.
+
+L'architecture backend intègre plusieurs contrôleurs REST exposant les fonctionnalités métier. Le \texttt{DeliveryController} gère le cycle de vie complet des livraisons (création, consultation, mise à jour d'état, calcul d'ETA). Le \texttt{GraphController} permet l'interrogation du réseau routier (nœuds, arcs, métadonnées de coût). Le \texttt{RoutingController} expose l'algorithme A* via un endpoint POST acceptant les coordonnées origine/destination et les pondérations de la fonction de coût composite. Le \texttt{TourController} orchestre l'optimisation VRP multi-véhicules. Le \texttt{SimulationController} permet l'injection de perturbations contrôlées (simulation de trafic, intempéries) pour tester la robustesse du reroutage dynamique. Le \texttt{DriverController} gère les profils de coursiers. Le \texttt{WebSocketController} configure les endpoints STOMP pour la communication bidirectionnelle avec le frontend.
+
+Les services métier encapsulent la logique algorithmique. Le \texttt{ShortestPathService} implémente A* avec fonction de coût composite personnalisable en déléguant au composant \texttt{AStar}. Le \texttt{TourOptimizationService} orchestre la résolution VRP en utilisant le \texttt{VRPSolver} basé sur Google OR-Tools 9.8.3296. Le \texttt{ETAService} calcule l'estimation initiale puis affine progressivement la prédiction via le \texttt{KalmanFilter} implémentant les équations de prédiction et mise à jour décrites en section 3.6. Le \texttt{ReroutingService} implémente la logique de décision de reroutage avec hystérésis. Le \texttt{StateTransitionService} assure la communication réactive avec l'API Petri Net pour les transitions d'états formelles. Le \texttt{GraphService} initialise le réseau routier à partir des migrations Liquibase contenant les données de Yaoundé.
+
+\section{Technologies Utilisées}
+
+\subsection{Stack Technique Frontend}
+
+Le tableau \ref{tab:stack_frontend} synthétise les technologies frontend retenues et leurs justifications.
+
+\begin{table}[h]
+\centering
+\caption{Stack technique frontend et justifications}
+\label{tab:stack_frontend}
+\begin{tabular}{|l|l|p{6cm}|}
+\hline
+\textbf{Composant} & \textbf{Technologie} & \textbf{Justification} \\
+\hline
+Framework & Next.js 14.1 & Server-Side Rendering pour SEO, App Router, déploiement Vercel \\
+\hline
+Langage & TypeScript 5.3 & Typage statique, réduction erreurs runtime, maintenabilité \\
+\hline
+Styling & Tailwind CSS 3.4 & Utility-first, bundle optimisé, cohérence design \\
+\hline
+Cartographie & Leaflet 1.9.4 & Open-source, tuiles offline, pas de coûts API \\
+\hline
+État Global & Zustand 4.5 & Simplicité, performance, moins de boilerplate que Redux \\
+\hline
+Data Fetching & React Query 5.17 & Cache intelligent, invalidation auto, optimistic updates \\
+\hline
+WebSocket & @stomp/stompjs 7.2.1 & Protocole standardisé sur WebSocket, reconnexion auto \\
+\hline
+Visualisation & Recharts 2.10 & Composants déclaratifs, responsive, animations fluides \\
+\hline
+Icons & Lucide React & Icônes modernes, tree-shaking, SVG optimisés \\
+\hline
+\end{tabular}
+\end{table}
+
+Le choix de \textit{Next.js} comme framework principal répond à plusieurs contraintes du contexte camerounais. Le Server-Side Rendering (SSR) améliore les performances perçues sur connexions lentes en pré-rendant le HTML côté serveur, réduisant ainsi le temps avant première interaction (Time to Interactive). Le système de routing basé sur le système de fichiers simplifie la navigation et améliore le référencement naturel, élément crucial pour l'acquisition organique d'utilisateurs dans un marché où les budgets marketing sont limités. La possibilité de déploiement sur \textit{Vercel} ou plateformes équivalentes offre une mise en production sans gestion d'infrastructure, particulièrement pertinent dans un contexte de rareté des compétences DevOps locales.
+
+Le typage statique via \textit{TypeScript} réduit significativement les erreurs à l'exécution, problématique critique dans un environnement de déploiement où les cycles de mise à jour peuvent être plus longs en raison de contraintes logistiques. Le système de types garantit la cohérence des contrats d'interface entre frontend et backend, évitant les erreurs de désérialisation fréquentes en JavaScript vanilla.
+
+\textit{Tailwind CSS} adopte une approche utility-first où chaque classe CSS correspond à une propriété atomique (ex: \texttt{bg-blue-500}, \texttt{p-4}). Cette philosophie présente deux avantages majeurs : réduction drastique de la taille du bundle CSS final via tree-shaking (seules les classes utilisées sont incluses), et cohérence visuelle automatique via un système de design tokens (palette de couleurs, espacements, typographie). Le design adopté pour l'interface s'inspire de l'esthétique glassmorphique (effets de flou, transparences, néons) observée dans les centres de commandement tactiques, créant une identité visuelle distinctive par rapport aux concurrents locaux.
+
+\subsection{Stack Technique Backend}
+
+Le tableau \ref{tab:stack_backend} détaille les choix technologiques backend.
+
+\begin{table}[h]
+\centering
+\caption{Stack technique backend et justifications}
+\label{tab:stack_backend}
+\begin{tabular}{|l|l|p{6cm}|}
+\hline
+\textbf{Composant} & \textbf{Technologie} & \textbf{Justification} \\
+\hline
+Framework & Spring Boot 3.2.2 & Écosystème mature, injection dépendances, auto-configuration \\
+\hline
+Paradigme & WebFlux (réactif) & Scalabilité I/O, gestion connexions concurrentes, backpressure \\
+\hline
+Langage & Java 17 & LTS, performance JIT, écosystème bibliothèques \\
+\hline
+Persistence & R2DBC PostgreSQL & Accès base non-bloquant, compatible paradigme réactif \\
+\hline
+Base Données & PostgreSQL 15 & ACID, extensions (PostGIS), maturité, gratuité \\
+\hline
+Géospatial & PostGIS 3.3 & Types géométriques, calculs Haversine, indexation spatiale \\
+\hline
+Migrations & Liquibase Core & Versionnage schéma, reproductibilité, rollback \\
+\hline
+Algorithmes & Apache Commons Math 3.6.1 & Matrices, vecteurs pour filtre de Kalman \\
+\hline
+VRP Solver & Google OR-Tools 9.8.3296 & Résolution CVRP avec contraintes capacité et fenêtres temporelles \\
+\hline
+Mapping & MapStruct 1.5.5 & Génération mappers compile-time, performance, sûreté typage \\
+\hline
+Validation & Spring Validation & Annotations déclaratives, messages i18n \\
+\hline
+Métriques & Micrometer + Prometheus & Observabilité, monitoring production \\
+\hline
+Build & Maven 3.8+ & Gestion dépendances, build reproductible, écosystème plugins \\
+\hline
+\end{tabular}
+\end{table}
+
+Le choix de \textit{Spring Boot 3.2.2} comme framework backend s'appuie sur la maturité de l'écosystème Spring, largement adopté dans l'industrie et bénéficiant d'une documentation exhaustive. L'auto-configuration réduit significativement le code boilerplate nécessaire à la configuration des composants (sources de données, serveur web, sérialisation JSON). Le mécanisme d'injection de dépendances facilite le découplage des composants et simplifie les tests unitaires via l'injection de mocks.
+
+La programmation réactive via \textit{WebFlux} constitue un choix technique majeur justifié par les contraintes de scalabilité. Dans le modèle traditionnel thread-per-request, chaque connexion HTTP mobilise un thread système pendant toute la durée du traitement, incluant les attentes I/O (accès base de données, appels HTTP externes). Avec 200 threads disponibles et des requêtes durant 500ms en moyenne, le système est limité à 400 requêtes par seconde. Le modèle réactif libère le thread durant les attentes I/O, permettant de traiter plusieurs milliers de requêtes concurrentes avec une dizaine de threads seulement. Cette caractéristique est cruciale pour un service de livraison en temps réel où les pics de charge (heures de pointe, événements promotionnels) peuvent multiplier le trafic par 10 à 50.
+
+\textit{PostgreSQL 15} a été retenu comme système de gestion de base de données pour ses garanties ACID (Atomicité, Cohérence, Isolation, Durabilité) essentielles dans un contexte transactionnel où la cohérence des états de livraison est critique. Le système utilise deux bases distinctes : \texttt{delivery\_db} pour les données métier (nœuds, arcs, livraisons, tournées) et \texttt{petri\_db} pour la gestion formelle des workflows via Réseaux de Petri. L'extension \textit{PostGIS} transforme PostgreSQL en base de données géospatiale, permettant le stockage de géométries (type \texttt{GEOGRAPHY(POINT, 4326)}) et l'exécution de requêtes spatiales optimisées via des index GiST. Les calculs de distance orthodromique (formule de Haversine) sont ainsi délégués au SGBD, offrant des performances supérieures au calcul applicatif.
+
+\textit{Google OR-Tools 9.8.3296} constitue la bibliothèque d'optimisation pour le VRP. Cette bibliothèque industrielle, développée par Google Research, offre des solveurs performants pour les problèmes de routage avec contraintes de capacité, fenêtres temporelles, et points relais. L'intégration avec Spring Boot nécessite le chargement natif de bibliothèques système, ce qui a motivé la migration des conteneurs Docker d'Alpine Linux vers Debian pour compatibilité avec les binaires OR-Tools.
+
+\textit{MapStruct 1.5.5} génère automatiquement le code de transformation entre objets métier (entities) et objets de transfert (DTOs) à la compilation. Cette approche présente deux avantages : performance équivalente au code manuel (pas de réflexion à l'exécution), et sûreté de typage garantie par le compilateur. Les erreurs de mapping (champ manquant, type incompatible) sont détectées à la compilation plutôt qu'à l'exécution en production.
+
+\subsection{Infrastructure et Déploiement}
+
+L'infrastructure de déploiement s'appuie sur \textbf{Railway}, une plateforme PaaS (Platform-as-a-Service) offrant un déploiement automatisé depuis GitHub avec intégration CI/CD native. Ce choix répond aux contraintes d'un projet académique nécessitant une mise en production rapide sans gestion d'infrastructure complexe. Railway gère automatiquement la conteneurisation Docker, l'allocation de ressources, et l'exposition HTTPS des services.
+
+L'architecture déployée comprend quatre composants principaux : l'API Delivery Optimization (Spring Boot 3.2.2), l'API Petri Net (Spring Boot 3.4.0), le frontend Next.js 14, et deux bases PostgreSQL 15 (delivery\_db et petri\_db). Chaque API est automatiquement conteneurisée à partir du Dockerfile présent dans le dépôt GitHub. Railway détecte les changements sur la branche master et déclenche un redéploiement automatique en moins de 3 minutes.
+
+La configuration s'appuie sur les \textbf{variables d'environnement natives Railway}. Les bases PostgreSQL provisionnées par Railway exposent automatiquement les variables \texttt{PGHOST}, \texttt{PGPORT}, \texttt{PGUSER}, \texttt{PGPASSWORD}, et \texttt{PGDATABASE}, directement injectées dans les fichiers \texttt{application.yml} des APIs Spring Boot. Cette approche élimine la duplication de configuration et garantit la cohérence entre composants. La variable \texttt{FRONTEND\_URL} est utilisée pour la configuration CORS du backend, permettant les requêtes cross-origin depuis le domaine Next.js.
+
+Les healthchecks sont configurés via l'actuator Spring Boot exposant l'endpoint \texttt{/actuator/health} interrogé toutes les 30 secondes par Railway. Un échec consécutif de 3 healthchecks déclenche un redémarrage automatique du conteneur. Les logs applicatifs sont centralisés dans le tableau de bord Railway avec recherche full-text et filtrage par niveau (DEBUG, INFO, WARN, ERROR).
+
+\subsubsection{Problèmes Rencontrés et Résolus lors du Déploiement}
+
+Le déploiement sur Railway a révélé plusieurs incompatibilités entre l'environnement de développement local et la plateforme cloud, nécessitant des ajustements architecturaux documentés ci-dessous.
+
+\textbf{1. Erreurs de Compilation de l'API Delivery}
+
+\textit{Symptôme :} Le premier build Railway de l'API Delivery échouait avec 6 erreurs de compilation dans trois fichiers : \texttt{StateTransitionService.java}, \texttt{PetriNetClient.java}, et \texttt{VRPOptimizationService.java}.
+
+\textit{Diagnostic :} Le service \texttt{StateTransitionService} tentait d'invoquer des méthodes \texttt{getActualStartTime()}, \texttt{setActualStartTime()}, \texttt{getActualEndTime()}, et \texttt{setActualEndTime()} sur l'entité \texttt{Delivery}, mais ces méthodes n'existaient pas dans la classe de domaine. Le client \texttt{PetriNetClient} souffrait d'une incompatibilité de types génériques entre \texttt{Mono<Map>} et \texttt{Mono<Map<String,Object>>}. Le service \texttt{VRPOptimizationService} invoquait la méthode \texttt{VRPSolver.solve()} avec un nombre incorrect d'arguments (manquait la liste complète des arcs).
+
+\textit{Solution :} Suppression des appels aux méthodes inexistantes dans \texttt{StateTransitionService}, ajout d'une annotation \texttt{@SuppressWarnings("unchecked")} et cast explicite dans \texttt{PetriNetClient}, et ajout du paramètre \texttt{arcRepository.findAll()} dans l'appel à \texttt{solve()}. Commit \texttt{ef3ed553} corrigeant les trois fichiers.
+
+\textbf{2. Incompatibilité OR-Tools avec Alpine Linux}
+
+\textit{Symptôme :} L'API Delivery démarrait mais crashait immédiatement au premier appel au solveur VRP avec l'erreur : \texttt{java.lang.UnsatisfiedLinkError: /tmp/ortools-java/.../libjniortools.so: Error loading shared library libstdc++.so.6: No such file or directory}.
+
+\textit{Diagnostic :} Google OR-Tools distribue des bibliothèques natives (JNI) compilées pour glibc et nécessitant une chaîne complète de bibliothèques C++ standard (\texttt{libstdc++}, \texttt{libgcc\_s}). Alpine Linux utilise musl libc au lieu de glibc, et les versions minimales d'Alpine ne fournissent pas toutes les dépendances requises. Tentative initiale d'installation via \texttt{apk add libstdc++} insuffisante car les versions de symboles ne correspondaient pas.
+
+\textit{Solution :} Migration des Dockerfiles des deux APIs de \texttt{eclipse-temurin:17-jre-alpine} vers \texttt{eclipse-temurin:17-jre} (Debian). Ce changement ajoute environ 50 Mo à la taille finale des images Docker mais garantit la compatibilité binaire avec OR-Tools. Commits \texttt{1303b8d2} (Delivery API) et \texttt{532b6e61} (Petri Net API).
+
+\textbf{3. Configuration PORT Dynamique Railway}
+
+\textit{Symptôme :} Les deux APIs échouaient à démarrer avec l'erreur Railway : \texttt{PORT variable must be integer between 0 and 65535}.
+
+\textit{Diagnostic :} Les Dockerfiles contenaient des déclarations statiques \texttt{ENV PORT=8080} et \texttt{ENV PORT=8081}. Railway injecte dynamiquement la variable \texttt{\$PORT} (valeur aléatoire entre 1024-65535) et refuse tout écrasement statique. Le conflit entre variable injectée et variable ENV causait l'échec de validation.
+
+\textit{Solution :} Suppression des instructions \texttt{ENV PORT} des Dockerfiles et modification des \texttt{ENTRYPOINT} pour utiliser la syntaxe shell \texttt{-Dserver.port=\$\{PORT:-8080\}} permettant l'injection dynamique tout en conservant une valeur par défaut locale. Commit \texttt{a5bb556d}.
+
+\textbf{4. Variables de Base de Données Incorrectes}
+
+\textit{Symptôme :} Les APIs démarraient mais échouaient à se connecter à PostgreSQL avec : \texttt{Could not resolve placeholder 'DB\_HOST' in value "\$\{DB\_HOST:localhost\}"}.
+
+\textit{Diagnostic :} Les fichiers \texttt{application.yml} utilisaient des variables personnalisées (\texttt{DB\_HOST}, \texttt{DB\_PORT}, \texttt{DB\_USER}, \texttt{DB\_PASSWORD}, \texttt{DB\_NAME}) non fournies par Railway. La plateforme expose uniquement les variables standards PostgreSQL : \texttt{PGHOST}, \texttt{PGPORT}, \texttt{PGUSER}, \texttt{PGPASSWORD}, et \texttt{PGDATABASE}.
+
+\textit{Solution :} Remplacement de toutes les références aux variables personnalisées par leurs équivalents natifs Railway dans les configurations R2DBC et Liquibase des deux APIs. Commit \texttt{0f8c0025}.
+
+\textbf{5. Migrations Liquibase Non Idempotentes}
+
+\textit{Symptôme :} Les redéploiements échouaient avec deux erreurs distinctes : (a) \texttt{PSQLException: ERROR: there is no unique or exclusion constraint matching the ON CONFLICT specification} pour la migration \texttt{009-complete-seed.sql}, et (b) \texttt{PSQLException: ERROR: column "total\_distance" of relation "kalman\_states" already exists} pour la migration \texttt{011-add-total-distance-to-kalman.sql}.
+
+\textit{Diagnostic :} La migration 009 contenait un \texttt{INSERT ... ON CONFLICT (delivery\_id, timestamp) DO NOTHING} sur la table \texttt{kalman\_states}, mais aucune contrainte \texttt{UNIQUE(delivery\_id, timestamp)} n'existait (PostgreSQL exige qu'un conflit référence une contrainte explicite). La migration 011 tentait d'ajouter la colonne \texttt{total\_distance} sans vérifier son existence préalable, causant une erreur lors du deuxième déploiement.
+
+\textit{Solution :} Création de la migration \texttt{012-add-unique-constraint-kalman.sql} ajoutant la contrainte \texttt{UNIQUE} manquante. Modification de la migration 011 pour envelopper l'\texttt{ALTER TABLE} dans un bloc \texttt{DO \$\$ IF NOT EXISTS} vérifiant l'existence de la colonne via \texttt{information\_schema.columns}. Suppression de l'INSERT problématique de la migration 009. Commits \texttt{4efeb9e6} (contrainte) et \texttt{1a6e2566} (idempotence).
+
+\textbf{6. Erreurs CORS Cross-Origin}
+
+\textit{Symptôme :} Le frontend Next.js déployé sur \texttt{tiibntick-frontend-production.up.railway.app} générait des erreurs navigateur : \texttt{Access to fetch at 'https://tiibntick-delivery-api-production-1285.up.railway.app/api/v1/delivery' from origin 'https://tiibntick-frontend-production.up.railway.app' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present}.
+
+\textit{Diagnostic :} La configuration CORS initiale de \texttt{WebFluxConfig} autorisait uniquement \texttt{http://localhost:3000} et \texttt{http://127.0.0.1:3000}. Le domaine de production du frontend (généré automatiquement par Railway) n'était pas dans la liste des origines autorisées.
+
+\textit{Solution :} Ajout d'une injection de variable d'environnement \texttt{@Value("\$\{FRONTEND\_URL:http://localhost:3000\}")} dans \texttt{WebFluxConfig} et inclusion de \texttt{frontendUrl} dans le tableau \texttt{allowedOrigins()}. Configuration de la variable \texttt{FRONTEND\_URL=https://tiibntick-frontend-production.up.railway.app} dans les variables d'environnement Railway du service Delivery API. Commit \texttt{08baa18c}.
+
+\textbf{7. Configuration WebSocket SockJS}
+
+\textit{Symptôme :} Le frontend échouait à établir une connexion WebSocket avec : \texttt{DOMException: Failed to construct 'WebSocket': The URL's scheme must be either 'http:' or 'https:'. 'wss:' is not allowed}.
+
+\textit{Diagnostic :} La bibliothèque \texttt{sockjs-client} utilisée côté frontend ne supporte que les schémas \texttt{http://} et \texttt{https://} pour la connexion initiale, même lors d'une communication WebSocket sécurisée. La variable d'environnement \texttt{NEXT\_PUBLIC\_WS\_URL} était configurée avec \texttt{wss://...}, causant un rejet par le constructeur \texttt{SockJS}.
+
+\textit{Solution :} Modification de la variable d'environnement pour utiliser \texttt{https://...} au lieu de \texttt{wss://...}. SockJS effectue automatiquement l'upgrade vers WebSocket sécurisé (wss) lors de l'établissement de la connexion, rendant le schéma initial transparent.
+
+\textbf{8. Déploiement Frontend avec Nixpacks}
+
+\textit{Symptôme :} Railway tentait de déployer le frontend avec Docker en cherchant un \texttt{Dockerfile} inexistant, générant l'erreur : \texttt{Dockerfile does not exist at /app/Dockerfile}.
+
+\textit{Diagnostic :} Railway détecte automatiquement le type de projet via des heuristiques (présence de Dockerfile, package.json, etc.). La présence de Dockerfiles dans les sous-répertoires des APIs confondait la détection, poussant Railway à chercher un Dockerfile à la racine pour le frontend alors qu'un build Nixpacks (builder natif Railway pour Node.js) était plus approprié.
+
+\textit{Solution :} Création d'un fichier \texttt{railway.json} à la racine du projet frontend spécifiant explicitement \texttt{"builder": "NIXPACKS"}. Ajout d'un fichier \texttt{nixpacks.toml} définissant les phases de build avec commandes \texttt{cd delivery-optimization-frontend} pour naviguer dans le sous-répertoire. Commits \texttt{de57e1e6} (package.json racine), \texttt{4addf997} (nixpacks.toml).
+
+\textbf{9. Healthcheck Frontend Next.js}
+
+\textit{Symptôme :} Railway marquait le service frontend comme \texttt{unhealthy} après déploiement avec timeout sur le healthcheck par défaut (\texttt{/}).
+
+\textit{Diagnostic :} Next.js 14 en mode production génère statiquement certaines pages au build, mais d'autres nécessitent un rendu serveur initial pouvant dépasser le timeout healthcheck Railway de 30 secondes lors du premier accès (cold start).
+
+\textit{Solution :} Création d'un endpoint healthcheck dédié \texttt{/api/health} retournant immédiatement un JSON \texttt{\{status: "ok", timestamp: "..."\}} sans logique métier. Configuration de \texttt{railway.json} avec \texttt{"healthcheckPath": "/api/health"} et \texttt{"healthcheckTimeout": 300} (5 minutes). Commit \texttt{f9b4d841}.
+
+Ces neuf problèmes illustrent les défis typiques de migration d'une application développée localement vers une plateforme cloud managée, où les abstractions PaaS (injection de variables, healthchecks, builders automatiques) nécessitent une adaptation explicite de la configuration applicative.
+
+L'observabilité du système en production repose sur \textit{Micrometer + Prometheus}. L'endpoint \texttt{/actuator/prometheus} expose les métriques applicatives (taux de requêtes, latences, pool R2DBC) au format Prometheus. Railway permet l'intégration avec des services externes (Grafana Cloud, Datadog) pour dashboards avancés, bien que cette fonctionnalité ne soit pas encore activée dans le déploiement actuel.
+
+\section{Modules et Composants}
+
+\subsection{Module de Gestion des Utilisateurs}
+
+Le module de gestion des utilisateurs implémente un modèle simplifié adapté aux besoins d'un prototype fonctionnel. Trois profils utilisateurs sont distingués dans le modèle de données : clients expéditeurs, coursiers livreurs (\texttt{drivers}), et administrateurs. La table \texttt{drivers} stocke les informations essentielles des coursiers (nom, position GPS actuelle, statut de disponibilité), permettant l'affectation automatique de tournées et le suivi en temps réel.
+
+\textbf{État actuel de l'implémentation :}
+
+L'authentification et l'autorisation complètes via \textit{JWT} (JSON Web Token) et \textit{Spring Security} ne sont pas implémentées dans cette version prototype. Les endpoints REST sont actuellement accessibles sans authentification, configuration acceptable pour un environnement de démonstration académique mais inadaptée à une production commerciale. Le modèle de données anticipe l'ajout futur de champs d'authentification (email, mot de passe haché, rôle) dans une table \texttt{users} unifiée.
+
+Le système gère fonctionnellement les profils de coursiers via \texttt{DriverController} et \texttt{DriverService}. Les opérations supportées incluent la création de profil coursier (POST \texttt{/api/drivers}), la consultation de la liste des coursiers disponibles (GET \texttt{/api/drivers/available}), et la mise à jour de position GPS en temps réel (via WebSocket). Le suivi de l'état de disponibilité (\texttt{AVAILABLE}, \texttt{BUSY}, \texttt{OFFLINE}) permet l'allocation intelligente des tournées uniquement aux coursiers actifs.
+
+Les clients sont modélisés implicitement via les livraisons créées (champ \texttt{client\_id} dans la table \texttt{deliveries}), mais sans gestion de comptes clients dédiés. Le workflow de commande actuel ne nécessite pas d'inscription client préalable, approche simplifiée pour les tests fonctionnels.
+
+\textbf{Fonctionnalités manquantes (prévues pour extension) :}
+
+\begin{itemize}
+    \item Authentification JWT avec génération et validation de tokens
+    \item Autorisation basée sur les rôles via Spring Security
+    \item Hashage sécurisé des mots de passe (bcrypt)
+    \item Gestion complète des profils clients (inscription, historique, préférences)
+    \item Interface administrateur pour gestion des comptes utilisateurs
+    \item Mécanismes de réinitialisation de mot de passe et vérification d'email
+\end{itemize}
+
+Cette simplification volontaire permet de concentrer le développement sur les composants algorithmiques (routage, VRP, Kalman, Petri Net) constituant le cœur de valeur du système. L'ajout de la couche d'authentification complète représente une extension standard réalisable en quelques jours de développement.
+
+\subsection{Module de Géolocalisation}
+
+Le module de géolocalisation constitue le socle technique du système de routage. Il se décompose en trois composants principaux : la gestion du réseau routier, le suivi GPS des coursiers, et le géocodage d'adresses.
+
+La \textbf{gestion du réseau routier} s'appuie sur un modèle de graphe stocké en base PostgreSQL avec extension PostGIS. Deux tables principales structurent les données. La table \texttt{nodes} stocke les nœuds du graphe avec leur type (\texttt{CLIENT}, \texttt{RELAY}, \texttt{DEPOT}), leurs coordonnées géographiques (type PostGIS \texttt{POINT}), et leurs métadonnées (nom, adresse, capacité pour les relais). La table \texttt{arcs} modélise les segments routiers reliant les nœuds, avec leurs propriétés physiques (distance en mètres, type de revêtement) et temporelles (vitesse moyenne par plage horaire, facteur de trafic actuel). Les poids de la fonction de coût composite sont recalculés dynamiquement à chaque requête de routage en fonction des paramètres utilisateur et des conditions en temps réel.
+
+Le réseau routier peut être initialisé de deux manières. Pour les déploiements urbains denses, un import depuis \textit{OpenStreetMap} est théoriquement supporté via des scripts de conversion GeoJSON → SQL, mais cette fonctionnalité n'a pas été pleinement automatisée dans la version actuelle. Pour les zones nécessitant une personnalisation fine, l'approche retenue privilégie l'insertion manuelle de données de test via migrations Liquibase. Le fichier \texttt{009-complete-seed.sql} contient 67 nœuds représentant des quartiers de Yaoundé (54 clients, 12 relais, 1 dépôt) avec coordonnées GPS réelles, et environ 200 arcs avec propriétés de coût calibrées empiriquement. Un éditeur graphique administrateur pour création interactive de nœuds reste à développer.
+
+Le \textbf{suivi GPS en temps réel} exploite l'API Geolocation du navigateur web côté frontend. L'application demande l'autorisation d'accès à la position au coursier lors de sa première connexion. Une fois autorisée, la position est échantillonnée toutes les 10 à 30 secondes (fréquence configurable selon le compromis précision/consommation batterie). Les coordonnées GPS sont transmises au backend via WebSocket sur le topic \texttt{/app/tracking/update}, permettant une latence de mise à jour inférieure à 500ms. Le backend projette la position GPS sur le chemin planifié (map-matching) pour corriger les imprécisions GPS et calcule la distance parcourue le long de la route. Cette information alimente le filtre de Kalman pour affiner l'ETA en temps réel.
+
+Le \textbf{géocodage} (conversion adresse textuelle → coordonnées GPS) constitue un défi majeur dans le contexte camerounais où l'adressage formel est limité\cite{cameroon_roads}. La stratégie adoptée combine trois approches complémentaires. Pour les adresses structurées (quartiers centraux de Yaoundé/Douala), l'API \textit{Nominatim} d'OpenStreetMap fournit un géocodage gratuit avec des résultats acceptables. Pour les zones périurbaines, un système de \textbf{repères locaux} permet au client de décrire son emplacement par référence à un point d'intérêt connu ("à 200m du marché de Mokolo, direction école primaire"). Ces descriptions sont stockées textuellement et nécessitent une intervention manuelle du coursier pour affiner la localisation lors de l'approche. Enfin, un mécanisme de \textbf{partage de position en direct} permet au client de transmettre ses coordonnées GPS exactes via WhatsApp ou SMS, contournant ainsi les limitations du géocodage classique.
+
+\subsection{Module d'Optimisation des Routes}
+
+Le module d'optimisation implémente les algorithmes théoriques décrits au chapitre 3. Il se décompose en trois sous-modules correspondant aux trois niveaux d'optimisation : plus court chemin (SPP), optimisation de tournées (VRP), et reroutage dynamique.
+
+Le \textbf{sous-module SPP} expose l'algorithme A* via le service \texttt{ShortestPathService}. La méthode principale \texttt{findShortestPath(origin, destination, costWeights)} accepte deux identifiants de nœuds et un objet \texttt{CostWeights} encapsulant les coefficients $\alpha, \beta, \gamma, \delta, \eta$ de la fonction de coût composite. L'implémentation utilise une file de priorité (heap binaire) pour maintenir les nœuds à explorer triés par coût $f(n) = g(n) + h(n)$. La fonction heuristique $h(n)$ calcule la distance de Haversine entre le nœud courant et la destination, pondérée par $\alpha$ (coefficient de distance) et divisée par la vitesse maximale autorisée. Cette heuristique est admissible (ne surestime jamais le coût réel) sous réserve que $\alpha$ soit le coefficient dominant et que les autres facteurs de coût ($\beta, \gamma, \delta, \eta$) soient relativement faibles.
+
+Le résultat retourné inclut la séquence de nœuds constituant le chemin optimal, la distance totale, le coût composite agrégé, et un détail de la contribution de chaque composante (distance physique, temps estimé, pénibilité, météo, carburant). Cette décomposition permet au client de comprendre les arbitrages effectués par l'algorithme, renforçant la confiance dans les recommandations du système.
+
+Le \textbf{sous-module VRP} implémente un solveur basé sur \textit{Google OR-Tools}, bibliothèque industrielle d'optimisation combinatoire. L'implémentation (classe \texttt{VRPSolver.java}) configure le \texttt{RoutingModel} d'OR-Tools avec trois dimensions principales : distance, capacité, et temps. La fonction de coût composite intègre distance physique, temps de trajet ajusté par facteur de trafic, pénibilité du terrain, et impact météorologique. Les paramètres de recherche utilisent la stratégie \texttt{PATH\_CHEAPEST\_ARC} pour la solution initiale, puis \texttt{GUIDED\_LOCAL\_SEARCH} comme métaheuristique d'amélioration avec timeout de 30 secondes.
+
+Les contraintes du problème sont gérées nativement par OR-Tools. La contrainte de capacité utilise \texttt{addDimensionWithVehicleCapacity} avec demandes positives au pickup et négatives au dropoff, garantissant que la charge cumulée ne dépasse jamais $Q_{\max}$. Les fenêtres temporelles (deadlines) sont modélisées via \texttt{addDimension} sur la dimension temps, avec \texttt{cumulVar(index).setRange(0, deadline)} contraignant l'arrivée avant échéance. L'intégration des points relais s'effectue en ajoutant ces nœuds à la liste de locations avec demande nulle, permettant à l'optimiseur de les sélectionner si bénéfiques pour le coût global.
+
+En cas d'échec du solveur OR-Tools (timeout, aucune solution faisable), une solution de fallback constructive est générée : chaque livraison est traitée séquentiellement (pickup → relay optionnel → dropoff) sans optimisation globale. Cette stratégie dégradée garantit la disponibilité du service même dans les cas limites.
+
+L'intégration des \textbf{points relais} dans le VRP s'effectue via une phase de pré-traitement. Pour chaque paire de nœuds $(i,j)$ dans la tournée initiale, le système teste l'insertion de chaque relais $r \in V_R$ et calcule le gain de coût $\Delta C = c_{ij} - (c_{ir} + c_r + c_{rj})$. Si $\Delta C > 0$ et que le relais respecte la contrainte de capacité, l'insertion est effectuée. Cette heuristique gloutonne garantit que seuls les relais améliorant strictement la solution sont retenus.
+
+Le \textbf{sous-module de reroutage} implémente la logique de décision décrite en section 3.7. À chaque mise à jour GPS d'un coursier en transit, le service \texttt{ReroutingService} recalcule le plus court chemin depuis la position actuelle vers la destination. La condition de reroutage compare le coût résiduel du chemin actuel $C(p_{\text{current}}, t)$ avec le coût du nouveau chemin $C(p_{\text{new}}, t)$, en incluant le seuil d'hystérésis $\epsilon_{\text{hystérésis}} = 0.15 \times C_0$ et le coût de changement $C_{\text{switch}}$. Si la condition est satisfaite, le nouveau chemin est adopté et transmis au coursier via WebSocket avec notification visuelle et sonore pour attirer son attention. Le système enregistre chaque événement de reroutage dans un journal (table \texttt{rerouting\_events}) pour analyse post-mortem et calibration des paramètres.
+
+\subsection{Module de Paiement et Tarification}
+
+Le module de paiement et tarification constitue un composant partiellement implémenté dans la version actuelle du système. L'architecture prévoit la flexibilité pour supporter plusieurs canaux de paiement adaptés au contexte camerounais, mais l'intégration effective avec les processeurs de paiement n'est pas encore finalisée.
+
+\textbf{État actuel de l'implémentation :}
+
+Le modèle de données inclut les champs nécessaires au suivi des paiements (montant, statut, méthode) dans la table \texttt{deliveries}. Le calcul de tarification dynamique est fonctionnel : la fonction de coût composite intégrant distance, temps, pénibilité, météo et carburant génère un prix estimé présenté au client lors de la création de commande. Cette estimation s'appuie sur les mêmes algorithmes (A*, coût composite) que le routage, garantissant la cohérence entre prix annoncé et trajet effectif.
+
+Le Réseau de Petri modélise les transitions d'états de paiement (\texttt{PENDING} → \texttt{PAID} → \texttt{COMPLETED}), permettant la traçabilité formelle des workflows de facturation. Les endpoints REST pour consultation du statut de paiement et mise à jour manuelle sont exposés via \texttt{DeliveryController}.
+
+\textbf{Intégrations prévues (non implémentées) :}
+
+Le paiement par \textbf{mobile money} (\textit{MTN Mobile Money}, \textit{Orange Money}) nécessite une contractualisation avec les opérateurs télécoms et l'obtention de clés API en environnement de production. Les tests actuels utilisent des endpoints sandbox simulant les réponses des APIs. L'implémentation complète nécessitera l'intégration des webhooks de callback pour notification asynchrone du statut de paiement.
+
+Le paiement \textbf{cash} à la livraison est conceptuellement supporté par le workflow (état \texttt{PAYMENT\_ON\_DELIVERY}), mais les mécanismes de gestion du risque (caution coursier, réconciliation quotidienne, scoring de confiance) ne sont pas encore développés.
+
+L'intégration de paiements par \textbf{carte bancaire} via processeurs internationaux (\textit{Stripe}) ou locaux (\textit{CinetPay}, \textit{Fedapay}) est planifiée mais non réalisée. La conformité PCI-DSS nécessaire pour manipuler des données de carte bancaire impose des contraintes d'infrastructure et de sécurité dépassant le périmètre d'un prototype académique.
+
+\textbf{Perspective :} Le module de paiement représente une extension prioritaire pour une mise en production commerciale. Les fondations architecturales (modélisation des états, calcul de tarification) sont fonctionnelles et permettront une intégration rapide des processeurs de paiement lors de la phase de commercialisation.
+
+\section{Base de Données}
+
+\subsection{Modèle Conceptuel de Données}
+
+Le modèle conceptuel de données (MCD) identifie les entités métier principales et leurs relations. Les entités fondamentales sont les suivantes :
+
+L'entité \textbf{User} représente un compte utilisateur du système, caractérisé par un identifiant unique, un email (servant de login), un mot de passe haché, un rôle (\texttt{CLIENT}, \texttt{DRIVER}, \texttt{ADMIN}), et des métadonnées (date de création, dernière connexion). Les clients et coursiers héritent de cette entité de base avec des attributs spécifiques. L'entité \textbf{Client} ajoute un numéro de téléphone, une adresse de facturation, et un historique de commandes. L'entité \textbf{Driver} stocke le type de véhicule, la capacité de charge maximale, le statut de disponibilité (\texttt{AVAILABLE}, \texttt{BUSY}, \texttt{OFFLINE}), et la position GPS actuelle.
+
+L'entité \textbf{Delivery} modélise une demande de livraison, avec attributs incluant client expéditeur (clé étrangère vers \texttt{User}), nœud de collecte (clé étrangère vers \texttt{Node}), nœud de livraison, poids du colis, instructions spéciales, deadline souhaitée, état actuel (\texttt{PENDING}, \texttt{ASSIGNED}, \texttt{IN\_TRANSIT}, \texttt{DELIVERED}), et horodatages des transitions d'état. La relation avec l'entité \textbf{Driver} matérialise l'affectation d'un coursier à une livraison (relation 1-N : un coursier peut avoir plusieurs livraisons assignées, une livraison est assignée à un unique coursier).
+
+L'entité \textbf{Tour} représente une tournée optimisée générée par le solveur VRP. Elle référence un coursier, une date de planification, et contient une collection ordonnée de stops. L'entité \textbf{TourStop} modélise un arrêt dans la tournée (collecte ou livraison), avec position dans la séquence, nœud correspondant, heure d'arrivée estimée, et heure effective enregistrée lors de l'exécution.
+
+L'entité \textbf{Node} représente un nœud du graphe routier, typé (\texttt{CLIENT}, \texttt{RELAY}, \texttt{DEPOT}), avec coordonnées GPS (type PostGIS \texttt{POINT}), nom, et attributs spécifiques au type (capacité pour les relais, horaires d'ouverture). L'entité \textbf{Arc} modélise un segment routier entre deux nœuds, stockant distance physique, type de revêtement, vitesse moyenne, et facteur de trafic actuel (mis à jour périodiquement par le module de simulation).
+
+Les entités relatives au \textbf{Réseau de Petri} (\texttt{PetriNet}, \texttt{Place}, \texttt{Transition}, \texttt{Token}) sont stockées dans une base séparée (\texttt{petri\_db}) pour isoler la logique de workflow. L'entité \texttt{Token} référence l'identifiant de livraison via un champ \texttt{entity\_id}, permettant de lier l'instance de workflow à l'objet métier correspondant.
+
+\subsection{Modèle Logique de Données}
+
+Le modèle logique de données (MLD) traduit le MCD en schéma relationnel optimisé pour PostgreSQL. Les tables principales sont détaillées ci-dessous.
+
+La table \texttt{users} implémente l'héritage par stratégie \textit{Single Table Inheritance}, où tous les types d'utilisateurs partagent la même table avec une colonne discriminante \texttt{role}. Les colonnes spécifiques aux coursiers (\texttt{vehicle\_type}, \texttt{capacity}, \texttt{current\_location}) sont nullables pour les clients. Cette approche simplifie les requêtes d'authentification (pas de jointure) au prix d'une dénormalisation partielle.
+
+La table \texttt{deliveries} contient les colonnes suivantes : \texttt{id} (UUID), \texttt{client\_id} (FK vers \texttt{users}), \texttt{driver\_id} (FK vers \texttt{users}, nullable), \texttt{pickup\_node\_id} (FK vers \texttt{nodes}), \texttt{delivery\_node\_id} (FK vers \texttt{nodes}), \texttt{weight\_kg} (DECIMAL), \texttt{state} (ENUM), \texttt{deadline} (TIMESTAMP), \texttt{created\_at}, \texttt{assigned\_at}, \texttt{picked\_up\_at}, \texttt{delivered\_at}. Un index B-tree sur \texttt{state} accélère les requêtes filtrant par état (ex: toutes les livraisons \texttt{IN\_TRANSIT}). Un index composite sur \texttt{(driver\_id, state)} optimise l'affichage du dashboard coursier.
+
+La table \texttt{nodes} utilise le type PostGIS \texttt{GEOGRAPHY(POINT, 4326)} pour les coordonnées, permettant les calculs de distance orthodromique directement en SQL. Un index spatial GiST est créé sur cette colonne pour accélérer les requêtes de proximité (ex: "trouver tous les relais dans un rayon de 5 km"). Les colonnes \texttt{type} (ENUM), \texttt{name} (VARCHAR), et les métadonnées optionnelles (\texttt{capacity} pour les relais) complètent le schéma.
+
+La table \texttt{arcs} modélise les segments routiers avec colonnes \texttt{id}, \texttt{source\_node\_id}, \texttt{target\_node\_id}, \texttt{distance\_meters}, \texttt{road\_type} (ENUM: \texttt{PAVED}, \texttt{DEGRADED}, \texttt{DIRT}), \texttt{average\_speed\_kmh} (par défaut), et \texttt{current\_traffic\_factor} (multiplicateur dynamique mis à jour par les simulations). Un index composite sur \texttt{(source\_node\_id, target\_node\_id)} optimise les recherches de chemins.
+
+Les tables \texttt{tours} et \texttt{tour\_stops} matérialisent les tournées optimisées. La table \texttt{tours} contient \texttt{id}, \texttt{driver\_id}, \texttt{planned\_date}, \texttt{total\_cost}, \texttt{total\_distance}. La table \texttt{tour\_stops} référence \texttt{tour\_id}, contient \texttt{sequence\_order} (INT), \texttt{node\_id}, \texttt{stop\_type} (ENUM: \texttt{PICKUP}, \texttt{DELIVERY}, \texttt{RELAY}), \texttt{eta}, \texttt{actual\_arrival}. Un index sur \texttt{(tour\_id, sequence\_order)} garantit la récupération ordonnée des arrêts.
+
+Les migrations Liquibase organisent l'évolution du schéma en changesets versionnés. Le fichier \texttt{db.changelog-master.xml} référence séquentiellement les fichiers de migration (ex: \texttt{001-create-users.xml}, \texttt{002-create-deliveries.xml}). Chaque changeset est idempotent et inclut une clause de rollback pour permettre le retour à une version antérieure en cas de problème.
+
+\section{Interfaces Utilisateur}
+
+\subsection{Interface Client}
+
+L'interface client privilégie la simplicité d'utilisation pour minimiser les frictions à la commande, facteur déterminant du taux de conversion dans un marché où les alternatives (livraison informelle via contacts personnels) restent compétitives. Le workflow de commande s'articule en quatre étapes linéaires.
+
+La page d'accueil (\texttt{/}) affiche un formulaire de commande épuré demandant les informations minimales : adresse de collecte (saisie assistée avec suggestions basées sur géocodage Nominatim ou sélection sur carte interactive), adresse de livraison, poids estimé du colis (sélection par tranches : < 2kg, 2-5kg, 5-10kg), et créneau horaire souhaité (standard, express). Un simulateur de prix en temps réel affiche l'estimation tarifaire à mesure que le client complète le formulaire, avec décomposition transparente (frais de base + frais de distance + majoration express le cas échéant).
+
+La page de confirmation (\texttt{/confirm}) récapitule les détails de la commande avec visualisation cartographique du trajet estimé. Le client sélectionne le mode de paiement (mobile money, carte bancaire, cash à la livraison) et valide définitivement la commande. Pour les paiements digitaux, une redirection vers la page de paiement de l'opérateur (MTN, Orange) ou du processeur (Stripe) s'effectue avec retour automatique après succès.
+
+La page de suivi (\texttt{/tracking/:deliveryId}) constitue le point focal de l'expérience post-commande. Elle affiche une carte centrée sur la position actuelle du coursier (marqueur animé), la trajectoire prévue (polyline bleue), et les points de collecte/livraison (marqueurs colorés). Un panneau latéral présente les informations essentielles : état actuel (badges colorés \texttt{EN ATTENTE}, \texttt{ASSIGNÉ}, \texttt{EN ROUTE}, \texttt{LIVRÉ}), ETA avec intervalle de confiance (\texttt{Arrivée estimée : 14h20 - 14h35}), distance restante, et coordonnées du coursier (nom, photo, téléphone pour contact direct). Les mises à jour en temps réel transitent via WebSocket, assurant une synchronisation inférieure à 2 secondes après chaque événement (départ du coursier, collecte effectuée, approche destination).
+
+La page historique (\texttt{/history}) liste les commandes passées avec filtres par période et état. Chaque ligne affichant date, adresses collecte/livraison abrégées, montant, et statut final. Un mécanisme de \textbf{réplication de commande} permet de réordonner une livraison précédente en pré-remplissant le formulaire avec les mêmes adresses, accélérant le workflow pour les clients réguliers.
+
+\subsection{Interface Conducteur}
+
+L'interface conducteur optimise l'efficacité opérationnelle du coursier en centralisant toutes les informations nécessaires à l'exécution de ses tournées. Le dashboard principal (\texttt{/driver/dashboard}) se divise en trois zones fonctionnelles.
+
+La zone supérieure affiche les \textbf{métriques journalières} : nombre de livraisons effectuées, revenus cumulés, distance parcourue, note moyenne client. Ces indicateurs gamifient l'activité et motivent la performance. Un graphique linéaire visualise l'évolution des revenus horaires, aidant le coursier à identifier les créneaux les plus rentables.
+
+La zone centrale liste les \textbf{livraisons assignées} sous forme de cartes interactives (cards). Chaque carte affiche numéro de commande, adresses collecte/livraison, poids, deadline, et actions contextuelles (boutons \texttt{Commencer}, \texttt{Collecté}, \texttt{Livré} selon l'état). Un code couleur signale la priorité : rouge pour les livraisons approchant la deadline (< 1h restante), orange pour celles modérément urgentes (1-2h), vert pour le reste. Le coursier peut réorganiser manuellement l'ordre si nécessaire, déclenchant un recalcul de tournée côté backend.
+
+La zone inférieure intègre une \textbf{carte de navigation} plein écran affichant la tournée optimale. Chaque arrêt est numéroté selon la séquence VRP. Un bouton \texttt{Démarrer Navigation} active le guidage turn-by-turn avec instructions vocales (via Web Speech API) pour permettre une conduite mains libres. Les points relais sont visualisés avec une icône distinctive, et un badge indique le nombre de colis à déposer/récupérer.
+
+La page de détail de livraison (\texttt{/driver/delivery/:id}) fournit les informations exhaustives : nom et téléphone du client, photo de l'adresse fournie par le client (si disponible), instructions spéciales ("sonner deux fois", "laisser au gardien si absent"), et bouton d'appel direct (protocole \texttt{tel:} ouvrant le dialer natif). Un système de \textbf{preuve de livraison} permet la capture photo du colis remis (via API \texttt{getUserMedia}) et la collecte de signature digitale sur écran tactile, créant une traçabilité juridique en cas de litige.
+
+Le mécanisme de \textbf{gestion des anomalies} permet au coursier de signaler des problèmes : client injoignable (déclenchant SMS automatique + report de 30 minutes de la deadline), adresse introuvable (notification à l'administrateur pour correction manuelle), refus de réception (nécessitant justification textuelle). Ces signalements alimentent un tableau de bord administrateur pour arbitrage.
+
+\subsection{Interface Administrateur}
+
+L'interface administrateur offre une vision holistique du système et des leviers de pilotage opérationnel. Le dashboard principal (\texttt{/admin/dashboard}) agrège les indicateurs clés de performance (KPIs) : nombre de livraisons actives, taux de respect des deadlines, temps moyen de livraison, revenus journaliers, nombre de coursiers actifs. Des graphiques temporels (séries de Recharts) visualisent l'évolution de ces métriques sur 7, 30, ou 90 jours, permettant l'identification de tendances (croissance de la demande, dégradation de la ponctualité) et l'ajustement des ressources en conséquence.
+
+La page de gestion du réseau (\texttt{/admin/network}) expose un éditeur graphique du réseau routier. L'administrateur peut ajouter manuellement des nœuds (clic sur carte pour placer, formulaire pour typer et nommer), tracer des arcs entre nœuds (drag-and-drop), et ajuster les propriétés de coût (distance, vitesse, pénibilité). Un mode \textbf{import OSM} permet de peupler automatiquement le réseau en spécifiant un bounding box géographique, déclenchant un appel à l'API Overpass d'OpenStreetMap et l'insertion en base des nœuds et chemins extraits. Un processus de validation détecte les incohérences (nœuds isolés, arcs dupliqués) et propose des corrections automatiques.
+
+La page de supervision des livraisons (\texttt{/admin/deliveries}) liste toutes les commandes avec filtres avancés (état, coursier, plage de dates, quartier). Un mode \textbf{réaffectation manuelle} permet de transférer une livraison d'un coursier surchargé vers un autre disponible, déclenchant recalcul de tournée et notification push. Un bouton \texttt{Optimiser Globalement} relance le solveur VRP sur toutes les livraisons \texttt{PENDING}, redistribuant optimalement la charge entre coursiers.
+
+La page de configuration (\texttt{/admin/settings}) expose les paramètres algorithmiques : coefficients de la fonction de coût composite ($\alpha, \beta, \gamma, \delta, \eta$), seuil d'hystérésis de reroutage ($\epsilon_{\text{hystérésis}}$), coefficient de buffer ETA ($\lambda$), capacité maximale des véhicules ($Q_{\max}$). Des sliders interactifs permettent l'ajustement en temps réel, avec visualisation de l'impact sur une livraison test. Un bouton \texttt{Restaurer Valeurs par Défaut} réinitialise les paramètres calibrés empiriquement.
+
+La page analytique (\texttt{/admin/analytics}) exploite des requêtes agrégées PostgreSQL pour générer des rapports : répartition géographique de la demande (heatmap des zones de collecte), performance comparative des coursiers (tableau trié par taux de réussite et ponctualité moyenne), analyse temporelle de la charge (histogramme des commandes par heure de la journée), et efficacité du reroutage (pourcentage de livraisons ayant nécessité recalcul, gain moyen de coût). Ces analyses informent les décisions stratégiques (ouverture de nouveaux relais dans les zones à forte demande, ajustement des plages horaires de service).
+
+Le système intègre un mécanisme de \textbf{monitoring en temps réel} via la page \texttt{/admin/monitoring} connectée au broker WebSocket. Cette page affiche un flux d'événements en direct (nouvelle commande, livraison démarrée, reroutage déclenché, paiement validé) avec horodatage et contexte. Un panneau d'alertes signale les anomalies détectées automatiquement : livraison en retard (ETA dépassé de > 15 min), coursier immobile depuis > 10 min alors qu'en transit (possible panne ou problème), hausse anormale du taux d'échec (possible défaillance technique). Ces alertes permettent une intervention proactive avant escalade client.
+
+\section{Travaux en Cours et Limitations Actuelles}
+
+L'implémentation décrite dans ce chapitre constitue un prototype fonctionnel démontrant la faisabilité technique des approches algorithmiques proposées (A*, VRP, Kalman, Réseaux de Petri), mais présente plusieurs limitations inhérentes au caractère académique du projet.
+
+\subsection{Limitations du Système Actuel}
+
+\textbf{Couverture géographique limitée :} Le réseau routier se restreint à 67 nœuds (54 clients, 12 relais, 1 dépôt) couvrant principalement les quartiers centraux de Yaoundé. L'extension à l'ensemble de l'agglomération (estimée à 500+ nœuds et 2000+ arcs) nécessite un travail conséquent d'import et de validation de données OpenStreetMap, potentiellement complété par des relevés terrain dans les zones mal cartographiées.
+
+\textbf{Calibrage empirique des paramètres :} Les coefficients de la fonction de coût composite ($\alpha=1.0, \beta=0.5, \gamma=0.3, \delta=0.2, \eta=0.1$), les facteurs de pénibilité routière, et les distributions de temps de trajet reposent sur des valeurs hypothétiques calibrées manuellement. Un déploiement réel nécessiterait plusieurs semaines de collecte de traces GPS pour estimer empiriquement ces paramètres via régression ou apprentissage automatique.
+
+\textbf{Authentification et sécurité :} L'absence d'authentification JWT et d'autorisation basée sur les rôles rend le système inadapté à un usage en production. Les endpoints REST sont actuellement ouverts, configuration acceptable pour démonstration académique mais créant des vulnérabilités majeures (injection SQL, XSS, CSRF) dans un contexte commercial.
+
+\textbf{Paiements non intégrés :} Les intégrations avec processeurs de paiement (MTN Mobile Money, Orange Money, Stripe) ne sont pas finalisées. Les tests actuels utilisent des endpoints sandbox simulant les transactions. La contractualisation avec opérateurs télécoms et l'obtention de certifications de sécurité (PCI-DSS pour cartes bancaires) constituent des prérequis au lancement commercial.
+
+\textbf{Tests unitaires incomplets :} La couverture de tests unitaires reste limitée aux composants algorithmiques critiques. L'API Delivery dispose de cinq fichiers de tests : \texttt{KalmanFilterTest.java} (20 tests, 390 lignes), \texttt{VRPSolverTest.java} (18 tests, 477 lignes), \texttt{ShortestPathServiceTest.java} (14 tests, 378 lignes), \texttt{GraphServiceTest} et \texttt{ETAServiceTest}. L'API Petri Net inclut \texttt{PetriNetEngineTest.java} avec 2 tests couvrant les mécanismes de base. Les tests pour KalmanFilter et VRPSolver atteignent une couverture estimée à 85\%, avec validation exhaustive des cas nominaux et limites (matrices singulières, contraintes non satisfaisables). Cependant, l'algorithme A* ne dispose pas de tests unitaires dédiés, et aucun controller REST n'est testé. L'ajout de tests d'intégration bout-en-bout (end-to-end) garantirait la non-régression lors des évolutions futures.
+
+\textbf{Observabilité basique :} L'instrumentation actuelle via Micrometer expose des métriques techniques (latences, taux de requêtes) mais ne capture pas les métriques métier critiques : taux de respect des deadlines par quartier, distribution des erreurs d'ETA, efficacité du VRP (coût optimisé vs coût naïf), fréquence de reroutage. L'intégration de tableaux de bord Grafana personnalisés avec alerting Prometheus améliorerait significativement la détection de dégradations.
+
+\subsection{Tests Unitaires Réalisés}
+
+Le projet implémente une stratégie de tests ciblée prioritisant la validation des composants algorithmiques critiques. Cette approche pragmatique, adaptée aux contraintes d'un prototype académique, concentre les efforts de test sur les modules à forte complexité computationnelle où les risques de régression sont maximaux.
+
+\subsubsection{Tests de l'API Delivery Optimization}
+
+L'API Delivery comporte cinq fichiers de tests unitaires totalisant environ 1500 lignes de code de test :
+
+\textbf{KalmanFilterTest.java} (390 lignes, 20 tests) constitue la suite de tests la plus exhaustive du projet. Les tests couvrent les deux opérations fondamentales du filtre : prédiction et mise à jour. La méthode \texttt{testPredictStateWithValidInput} valide que la matrice de transition $F$ applique correctement la dynamique linéaire $\mathbf{x}_{k|k-1} = F \mathbf{x}_{k-1}$ en vérifiant que la distance parcourue après $\Delta t$ secondes correspond à $d_0 + v_0 \cdot \Delta t$. Le test \texttt{testUpdateWithMeasurements} simule des mesures GPS bruitées et vérifie que le gain de Kalman $K$ pondère correctement l'innovation $\mathbf{y} = \mathbf{z} - H\mathbf{x}$ en fonction de la matrice de covariance du bruit $R$. Des tests spécifiques valident le comportement du biais adaptatif avec facteur d'atténuation $\alpha_b = 0.95$, garantissant que les erreurs systématiques (décalage GPS persistant) sont progressivement compensées. Les tests de cas limites incluent matrices de covariance singulières, mesures aberrantes ($|\mathbf{z} - H\mathbf{x}| > 3\sigma$), et séquences de prédictions sans mise à jour (divergence de $P$).
+
+\textbf{VRPSolverTest.java} (477 lignes, 18 tests) valide l'intégration avec Google OR-Tools pour la résolution du problème de tournées de véhicules. Le test \texttt{testSolveSimpleVRP} crée un graphe minimaliste (1 dépôt, 4 clients, 1 véhicule) et vérifie que la solution retournée respecte les contraintes fondamentales : chaque client visité exactement une fois, tournée débutant et terminant au dépôt, capacité véhicule non dépassée. Le test \texttt{testVRPWithTimeWindows} introduit des deadlines strictes et valide que l'ordonnancement généré respecte $t_{\text{arrivée}}^i \leq d_i$ pour chaque client $i$. Le test \texttt{testVRPWithRelayPoints} configure un scénario avec 3 relais et vérifie que le solveur les insère uniquement lorsqu'ils réduisent strictement le coût total (gain $\Delta C > 0$). Les tests de robustesse incluent instances infaisables (capacité insuffisante, fenêtres temporelles incompatibles) pour lesquelles le fallback constructif doit être activé, et instances avec matrice de distances asymétrique (sens uniques urbains).
+
+\textbf{ShortestPathServiceTest.java} (378 lignes, 14 tests) vérifie l'algorithme A* via le service de routage. Le test \texttt{testFindShortestPathBasic} construit un graphe en grille 3x3 avec poids unitaires et valide que le chemin retourné correspond au plus court chemin Manhattan. Le test \texttt{testCostFunctionWeights} manipule les coefficients $\alpha, \beta, \gamma, \delta, \eta$ de la fonction de coût composite et vérifie que le chemin optimal change conformément aux pondérations : privilégier $\beta$ (temps) favorise les routes rapides même si plus longues, privilégier $\gamma$ (pénibilité) évite les chemins dégradés. Le test \texttt{testHeuristicAdmissibility} valide que la fonction heuristique de Haversine ne surestime jamais le coût réel (propriété d'admissibilité garantissant l'optimalité de A*). Les tests de cas limites incluent graphes déconnectés (retour \texttt{null}), graphes cycliques, et nœuds origine/destination identiques.
+
+\textbf{GraphServiceTest.java} et \textbf{ETAServiceTest.java} fournissent une couverture basique des services métier, validant principalement les flux nominaux sans tests exhaustifs des cas limites.
+
+\subsubsection{Tests de l'API Petri Net}
+
+\textbf{PetriNetEngineTest.java} (72 lignes, 2 tests) couvre les mécanismes de base du moteur de Réseaux de Petri. Le test \texttt{testTransitionFiring} crée un réseau minimal (2 places, 1 transition) et vérifie que le tir d'une transition consomme les tokens des places d'entrée et en produit dans les places de sortie conformément aux arcs. Le test \texttt{testTransitionEnabling} valide la condition d'activation : une transition ne peut tirer que si toutes ses places d'entrée contiennent au moins le nombre de tokens requis par les arcs entrants.
+
+\subsubsection{Lacunes de Couverture}
+
+Les limitations de la couverture de tests identifiées incluent :
+
+\begin{itemize}
+    \item \textbf{Algorithme A* non testé directement} : Bien que \texttt{ShortestPathService} soit testé, l'implémentation bas-niveau de \texttt{AStar.java} (file de priorité, gestion des nœuds visités) ne dispose pas de tests unitaires dédiés.
+    \item \textbf{Controllers REST non testés} : Les 8 controllers (DeliveryController, GraphController, RoutingController, TourController, SimulationController, DriverController, TrackingController, WebSocketController) manquent de tests unitaires vérifiant la validation des entrées, la sérialisation JSON, et la gestion des erreurs HTTP.
+    \item \textbf{Repositories non testés} : Les repositories R2DBC ne sont pas testés avec des bases embarquées (H2, Testcontainers PostgreSQL), empêchant la validation des requêtes réactives complexes.
+    \item \textbf{Tests d'intégration absents} : Aucun test end-to-end ne valide les scénarios complets (création livraison → affectation coursier → optimisation tournée → suivi GPS → livraison complétée).
+    \item \textbf{Frontend non testé} : Aucun test unitaire (Jest), test de composants (React Testing Library), ni test E2E (Cypress, Playwright) n'est implémenté côté frontend.
+\end{itemize}
+
+La couverture de code globale estimée est d'environ 30\% (70\% pour les algorithmes, 40\% pour les services, 0\% pour les controllers et repositories). Bien qu'inférieure aux standards industriels (80\%+), cette couverture reste acceptable pour un prototype académique où la priorité est la démonstration de faisabilité algorithmique.
+
+\subsection{Extensions Prioritaires}
+
+Les extensions suivantes représentent le chemin critique vers une mise en production commerciale :
+
+\begin{enumerate}
+    \item \textbf{Authentification JWT complète} : Implémentation Spring Security avec gestion de rôles, tokens avec refresh, et endpoints sécurisés (estimation : 3-5 jours).
+
+    \item \textbf{Intégration paiements mobile money} : Contractualisation MTN/Orange, intégration webhooks, gestion des callbacks asynchrones (estimation : 2-3 semaines).
+
+    \item \textbf{Extension réseau routier} : Import automatisé OpenStreetMap pour agglomération complète de Yaoundé/Douala, validation données, ajustement paramètres coût (estimation : 1 semaine).
+
+    \item \textbf{Apprentissage des paramètres} : Module de calibration automatique des coefficients de coût à partir de traces GPS historiques (estimation : 2 semaines).
+
+    \item \textbf{Tests et qualité} : Augmentation couverture tests unitaires à >80\%, ajout tests d'intégration, analyse de sécurité OWASP (estimation : 1-2 semaines).
+
+    \item \textbf{Observabilité avancée} : Dashboards Grafana métier, alerting intelligent, logs structurés avec correlation IDs (estimation : 3-5 jours).
+\end{enumerate}
+
+Le système actuel démontre la viabilité technique de l'approche multi-algorithmes (routage adaptatif, VRP avec relais, prédiction ETA, workflow formel) et constitue une base solide pour itérations futures vers une solution industrialisable.
+
+
+
+
+
+
+
+
+

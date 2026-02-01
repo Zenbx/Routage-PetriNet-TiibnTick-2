@@ -16,5 +16,6 @@
     <include file="classpath:db/changelog/v1/009-complete-seed.sql" relativeToChangelogFile="false"/>
     <include file="classpath:db/changelog/v1/010-add-traffic-factor.sql" relativeToChangelogFile="false"/>
     <include file="classpath:db/changelog/v1/011-add-total-distance-to-kalman.sql" relativeToChangelogFile="false"/>
+    <include file="classpath:db/changelog/v1/012-add-unique-constraint-kalman.sql" relativeToChangelogFile="false"/>
 
 </databaseChangeLog>

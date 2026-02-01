@@ -1,0 +1,561 @@
+\chapter{Code Source}
+
+\section{Algorithme A* pour Plus Court Chemin}
+
+L'implémentation de l'algorithme A* avec fonction de coût composite est présentée ci-dessous. Le code utilise une file de priorité pour explorer les nœuds par ordre croissant de score $f(n) = g(n) + h(n)$.
+
+\begin{lstlisting}[language=Java, caption={Algorithme A* - AStar.java}, label={lst:astar}]
+package com.delivery.optimization.algorithm;
+
+import com.delivery.optimization.domain.Arc;
+import com.delivery.optimization.domain.Node;
+import lombok.Value;
+import org.springframework.stereotype.Component;
+import java.util.*;
+
+@Component
+public class AStar {
+    @Value
+    public static class PathResult {
+        List<String> path;
+        double totalCost;
+    }
+
+    public PathResult findPath(String originId, String destinationId,
+            Map<String, Node> nodes, Map<String, List<Arc>> adjacencyList,
+            CostFunction.Weights weights) {
+        PriorityQueue<NodeScore> openSet = new PriorityQueue<>(
+            Comparator.comparingDouble(NodeScore::getFScore));
+        Map<String, String> cameFrom = new HashMap<>();
+        Map<String, Double> gScore = new HashMap<>();
+
+        gScore.put(originId, 0.0);
+        openSet.add(new NodeScore(originId,
+            heuristic(originId, destinationId, nodes)));
+
+        while (!openSet.isEmpty()) {
+            NodeScore current = openSet.poll();
+            String currentId = current.getNodeId();
+
+            if (currentId.equals(destinationId)) {
+                return new PathResult(reconstructPath(cameFrom, currentId),
+                    gScore.get(currentId));
+            }
+
+            for (Arc arc : adjacencyList.getOrDefault(currentId,
+                    Collections.emptyList())) {
+                String neighborId = arc.getDestinationId();
+                double tentativeGScore = gScore.get(currentId)
+                    + calculateCost(arc, weights);
+
+                if (tentativeGScore < gScore.getOrDefault(neighborId,
+                        Double.MAX_VALUE)) {
+                    cameFrom.put(neighborId, currentId);
+                    gScore.put(neighborId, tentativeGScore);
+                    double fScore = tentativeGScore
+                        + heuristic(neighborId, destinationId, nodes);
+
+                    if (openSet.stream().noneMatch(
+                            ns -> ns.getNodeId().equals(neighborId))) {
+                        openSet.add(new NodeScore(neighborId, fScore));
+                    }
+                }
+            }
+        }
+        return null; // Path not found
+    }
+
+    private double calculateCost(Arc arc, CostFunction.Weights weights) {
+        double tf = arc.getTrafficFactor() != null
+            ? arc.getTrafficFactor() : 1.0;
+        return weights.getAlpha() * arc.getDistance()
+            + weights.getBeta() * (arc.getTravelTime() * tf)
+            + weights.getGamma() * arc.getPenibility()
+            + weights.getDelta() * arc.getWeatherImpact()
+            + weights.getEta() * arc.getFuelCost();
+    }
+
+    private double heuristic(String nodeId, String targetId,
+            Map<String, Node> nodes) {
+        Node n = nodes.get(nodeId);
+        Node d = nodes.get(targetId);
+        if (n == null || d == null) return 0;
+
+        double dHaversine = haversine(n.getLatitude(), n.getLongitude(),
+            d.getLatitude(), d.getLongitude());
+        double vmax = 60.0; // Max speed in km/h
+        return dHaversine / vmax;
+    }
+
+    private double haversine(double lat1, double lon1,
+            double lat2, double lon2) {
+        double R = 6371; // Earth radius in km
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+    }
+
+    private List<String> reconstructPath(Map<String, String> cameFrom,
+            String current) {
+        List<String> path = new ArrayList<>();
+        path.add(current);
+        while (cameFrom.containsKey(current)) {
+            current = cameFrom.get(current);
+            path.add(0, current);
+        }
+        return path;
+    }
+}
+\end{lstlisting}
+
+\section{Filtre de Kalman pour Prédiction ETA}
+
+L'implémentation du filtre de Kalman étendu avec biais adaptatif utilise Apache Commons Math pour les opérations matricielles.
+
+\begin{lstlisting}[language=Java, caption={Filtre de Kalman - KalmanFilter.java}, label={lst:kalman}]
+package com.delivery.optimization.algorithm;
+
+import lombok.Builder;
+import lombok.Data;
+import org.apache.commons.math3.linear.*;
+import org.springframework.stereotype.Component;
+
+@Component
+public class KalmanFilter {
+    @Data
+    @Builder
+    public static class ExtendedState {
+        private RealVector x; // [distance, speed, bias]
+        private RealMatrix p; // covariance matrix
+    }
+
+    private static final double ALPHA_B = 0.95; // Bias decay factor
+
+    /**
+     * Prediction step: x_k|k-1 = F * x_k-1, P_k|k-1 = F * P_k-1 * F^T + Q
+     */
+    public ExtendedState predict(ExtendedState state, double dt,
+            RealMatrix q) {
+        // F matrix as defined in Section 3.6.2
+        RealMatrix f = new Array2DRowRealMatrix(new double[][] {
+            { 1.0, dt, 0.0 },
+            { 0.0, 1.0, 0.0 },
+            { 0.0, 0.0, ALPHA_B }
+        });
+
+        RealVector predictedX = f.operate(state.getX());
+        RealMatrix predictedP = f.multiply(state.getP())
+            .multiply(f.transpose()).add(q);
+
+        return ExtendedState.builder()
+            .x(predictedX)
+            .p(predictedP)
+            .build();
+    }
+
+    /**
+     * Update step: x_k|k = x_k|k-1 + K(z - H*x_k|k-1)
+     */
+    public ExtendedState update(ExtendedState state, double distMeasured,
+            double speedMeasured, double rDist, double rSpeed) {
+        // H matrix: Observe distance and speed
+        RealMatrix h = new Array2DRowRealMatrix(new double[][] {
+            { 1.0, 0.0, 0.0 },
+            { 0.0, 1.0, 0.0 }
+        });
+
+        RealVector z = new ArrayRealVector(
+            new double[] { distMeasured, speedMeasured });
+        RealMatrix r = new Array2DRowRealMatrix(new double[][] {
+            { rDist, 0.0 },
+            { 0.0, rSpeed }
+        });
+
+        // Innovation y = z - Hx
+        RealVector y = z.subtract(h.operate(state.getX()));
+
+        // S = HPH^T + R
+        RealMatrix s = h.multiply(state.getP())
+            .multiply(h.transpose()).add(r);
+
+        // K = PH^T * S^-1
+        RealMatrix k = state.getP().multiply(h.transpose())
+            .multiply(new LUDecomposition(s).getSolver().getInverse());
+
+        // Updated state x = x + Ky
+        RealVector updatedX = state.getX().add(k.operate(y));
+
+        // Updated covariance P = (I - KH) * P
+        RealMatrix i = MatrixUtils.createRealIdentityMatrix(3);
+        RealMatrix updatedP = i.subtract(k.multiply(h))
+            .multiply(state.getP());
+
+        return ExtendedState.builder()
+            .x(updatedX)
+            .p(updatedP)
+            .build();
+    }
+}
+\end{lstlisting}
+
+\newpage
+\section{Solveur VRP avec Google OR-Tools}
+
+Extrait de l'implémentation du solveur VRP utilisant Google OR-Tools pour l'optimisation de tournées avec contraintes de capacité et fenêtres temporelles.
+
+\begin{lstlisting}[language=Java, caption={Solveur VRP - VRPSolver.java (extrait)}, label={lst:vrp}]
+package com.delivery.optimization.algorithm;
+
+import com.google.ortools.Loader;
+import com.google.ortools.constraintsolver.*;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+
+@Component
+@Slf4j
+public class VRPSolver {
+    static {
+        Loader.loadNativeLibraries(); // Charger OR-Tools natif
+    }
+
+    public TourOptimizationResponse solve(TourOptimizationRequest request,
+            List<Node> availableRelays, Map<String, Node> allNodes,
+            List<Arc> allArcs) {
+        try {
+            // 1. Preparer les donnees pour OR-Tools
+            DataModel data = createDataModel(request, availableRelays,
+                allNodes, allArcs);
+
+            // 2. Creer le gestionnaire de routing
+            RoutingIndexManager manager = new RoutingIndexManager(
+                data.distanceMatrix.length, 1, data.depot);
+
+            // 3. Creer le modele de routing
+            RoutingModel routing = new RoutingModel(manager);
+
+            // 4. Definir la fonction de cout (distance/temps)
+            final int transitCallbackIndex = routing.registerTransitCallback(
+                (long fromIndex, long toIndex) -> {
+                    int fromNode = manager.indexToNode(fromIndex);
+                    int toNode = manager.indexToNode(toIndex);
+                    return data.distanceMatrix[fromNode][toNode];
+                });
+            routing.setArcCostEvaluatorOfAllVehicles(transitCallbackIndex);
+
+            // 5. Ajouter contrainte de capacite
+            final int demandCallbackIndex = routing.registerUnaryTransitCallback(
+                (long fromIndex) -> {
+                    int fromNode = manager.indexToNode(fromIndex);
+                    return data.demands[fromNode];
+                });
+            routing.addDimensionWithVehicleCapacity(
+                demandCallbackIndex, 0,
+                new long[]{request.getVehicleCapacity()},
+                true, "Capacity");
+
+            // 6. Parametres de recherche
+            RoutingSearchParameters searchParameters =
+                main.defaultRoutingSearchParameters().toBuilder()
+                .setFirstSolutionStrategy(
+                    FirstSolutionStrategy.Value.PATH_CHEAPEST_ARC)
+                .setLocalSearchMetaheuristic(
+                    LocalSearchMetaheuristic.Value.GUIDED_LOCAL_SEARCH)
+                .setTimeLimit(com.google.protobuf.Duration.newBuilder()
+                    .setSeconds(30).build())
+                .build();
+
+            // 7. Resoudre
+            Assignment solution = routing.solveWithParameters(searchParameters);
+
+            if (solution == null) {
+                log.warn("Aucune solution trouvee pour le VRP");
+                return createFallbackSolution(request, availableRelays);
+            }
+
+            // 8. Extraire la solution
+            return extractSolution(solution, routing, manager, data, request);
+
+        } catch (Exception e) {
+            log.error("Erreur lors de la resolution VRP: {}",
+                e.getMessage(), e);
+            return createFallbackSolution(request, availableRelays);
+        }
+    }
+}
+\end{lstlisting}
+
+\newpage
+\section{Scripts de Base de Données}
+
+\subsection{Création de la Table Nodes}
+
+\begin{lstlisting}[language=SQL, caption={Migration 001 - Création table nodes}, label={lst:sql-nodes}]
+CREATE TABLE nodes (
+    id VARCHAR(50) PRIMARY KEY,
+    type VARCHAR(20) NOT NULL, -- CLIENT, RELAY, DEPOT
+    name VARCHAR(100),
+    latitude DOUBLE PRECISION NOT NULL,
+    longitude DOUBLE PRECISION NOT NULL,
+    capacity INT DEFAULT 0,
+    current_occupancy INT DEFAULT 0
+);
+
+CREATE INDEX idx_nodes_type ON nodes(type);
+\end{lstlisting}
+
+\subsection{Tables Auxiliaires pour Métriques}
+
+\begin{lstlisting}[language=SQL, caption={Migration 006 - Tables métriques et événements}, label={lst:sql-metrics}]
+CREATE TABLE relay_points (
+    id VARCHAR(50) PRIMARY KEY,
+    name VARCHAR(100),
+    latitude DOUBLE PRECISION NOT NULL,
+    longitude DOUBLE PRECISION NOT NULL,
+    capacity INT DEFAULT 0,
+    current_occupancy INT DEFAULT 0
+);
+
+CREATE TABLE eta_history (
+    id SERIAL PRIMARY KEY,
+    delivery_id VARCHAR(50) REFERENCES deliveries(id),
+    estimated_eta TIMESTAMP WITH TIME ZONE,
+    actual_arrival TIMESTAMP WITH TIME ZONE,
+    error_margin DOUBLE PRECISION,
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE reroute_events (
+    id SERIAL PRIMARY KEY,
+    delivery_id VARCHAR(50) REFERENCES deliveries(id),
+    reason VARCHAR(255),
+    old_path_cost DOUBLE PRECISION,
+    new_path_cost DOUBLE PRECISION,
+    hysteresis_met BOOLEAN,
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+\end{lstlisting}
+
+\subsection{Migration Idempotente pour Filtre de Kalman}
+
+\begin{lstlisting}[language=SQL, caption={Migration 011 - Ajout colonne total\_distance}, label={lst:sql-kalman}]
+-- Add total_distance column if it doesn't exist
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name='kalman_states'
+        AND column_name='total_distance'
+    ) THEN
+        ALTER TABLE kalman_states
+        ADD COLUMN total_distance DOUBLE PRECISION;
+    END IF;
+END $$;
+\end{lstlisting}
+
+\newpage
+\chapter{Données Brutes et Résultats Détaillés}
+
+\section{Structure des Tables PostgreSQL}
+
+\subsection{Base delivery\_db}
+
+La base de données \texttt{delivery\_db} contient les tables suivantes :
+
+\begin{table}[h]
+\centering
+\caption{Tables principales de delivery\_db}
+\label{tab:db-schema}
+\small
+\begin{tabular}{|l|p{10cm}|}
+\hline
+\textbf{Table} & \textbf{Description} \\
+\hline
+\texttt{nodes} & 67 nœuds du réseau (54 clients, 12 relais, 1 dépôt) avec coordonnées GPS \\
+\hline
+\texttt{arcs} & ~200 segments routiers avec distance, temps, pénibilité, météo, carburant \\
+\hline
+\texttt{deliveries} & Livraisons avec pickup/dropoff, poids, statut, horodatages \\
+\hline
+\texttt{drivers} & Coursiers avec position GPS actuelle, statut disponibilité \\
+\hline
+\texttt{tours} & Tournées optimisées avec coût total, distance, durée estimée \\
+\hline
+\texttt{tour\_stops} & Arrêts de tournée avec ordre de séquence, type (PICKUP/DROPOFF) \\
+\hline
+\texttt{kalman\_states} & États filtre de Kalman (distance, vitesse, biais, covariance) \\
+\hline
+\texttt{eta\_history} & Historique ETA estimés vs arrivées réelles pour calibration \\
+\hline
+\texttt{reroute\_events} & Événements de reroutage avec coûts ancien/nouveau chemins \\
+\hline
+\texttt{relay\_points} & Points relais avec capacité et occupation actuelle \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Base petri\_db}
+
+La base de données \texttt{petri\_db} contient les tables pour modélisation des Réseaux de Petri :
+
+\begin{table}[h]
+\centering
+\caption{Tables de petri\_db}
+\label{tab:petri-schema}
+\begin{tabular}{|l|p{10cm}|}
+\hline
+\textbf{Table} & \textbf{Description} \\
+\hline
+\texttt{petri\_nets} & Définitions de réseaux de Petri (workflow livraison) \\
+\hline
+\texttt{places} & Places du réseau (états : PENDING, ASSIGNED, IN\_TRANSIT, etc.) \\
+\hline
+\texttt{transitions} & Transitions entre places (événements métier) \\
+\hline
+\texttt{tokens} & Tokens actifs référençant les livraisons (entity\_id) \\
+\hline
+\texttt{arcs\_petri} & Arcs du réseau de Petri (place → transition, transition → place) \\
+\hline
+\end{tabular}
+\end{table}
+
+\section{Exemples de Données de Test}
+
+\subsection{Nœuds du Réseau de Yaoundé}
+
+Extrait du fichier \texttt{009-complete-seed.sql} montrant des nœuds réels de Yaoundé :
+
+\begin{lstlisting}[language=SQL, caption={Exemples de nœuds clients}, label={lst:data-nodes}]
+INSERT INTO nodes (id, type, name, latitude, longitude) VALUES
+('depot_1', 'DEPOT', 'Depot Central Yaounde', 3.8480, 11.5021),
+('client_1', 'CLIENT', 'Quartier Bastos', 3.8850, 11.5180),
+('client_2', 'CLIENT', 'Quartier Melen', 3.8277, 11.5173),
+('client_3', 'CLIENT', 'Quartier Mvog-Ada', 3.8500, 11.5100),
+('relay_1', 'RELAY', 'Relais Mokolo Market', 3.8650, 11.5050, 50, 0),
+('relay_2', 'RELAY', 'Relais Essos', 3.8967, 11.5119, 30, 0)
+ON CONFLICT (id) DO NOTHING;
+\end{lstlisting}
+
+\subsection{Configuration Application Spring Boot}
+
+Fichier \texttt{application.yml} montrant l'utilisation des variables Railway :
+
+\begin{lstlisting}[language=yaml, caption={Configuration application.yml}, label={lst:config-yml}]
+spring:
+  application:
+    name: delivery-optimization-api
+  r2dbc:
+    url: r2dbc:postgresql://${PGHOST:localhost}:${PGPORT:5432}/${PGDATABASE:delivery_db}
+    username: ${PGUSER:postgres}
+    password: ${PGPASSWORD:postgres}
+    pool:
+      initial-size: 5
+      max-size: 20
+  liquibase:
+    enabled: true
+    url: jdbc:postgresql://${PGHOST:localhost}:${PGPORT:5432}/${PGDATABASE:delivery_db}
+    user: ${PGUSER:postgres}
+    password: ${PGPASSWORD:postgres}
+    change-log: classpath:db/changelog/db.changelog-master.xml
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+
+petri-net:
+  api:
+    url: ${PETRI_NET_API_URL:http://localhost:8081}
+\end{lstlisting}
+
+\section{Versions Exactes des Technologies}
+
+\subsection{Frontend (package.json)}
+
+\begin{lstlisting}[language=json, caption={Versions Frontend - package.json (extrait)}, label={lst:package-json}]
+{
+  "name": "delivery-optimization-frontend",
+  "version": "0.1.0",
+  "dependencies": {
+    "@stomp/stompjs": "^7.2.1",
+    "@tanstack/react-query": "^5.17.0",
+    "leaflet": "^1.9.4",
+    "next": "^14.1.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-leaflet": "^4.2.1",
+    "recharts": "^2.10.0",
+    "sockjs-client": "^1.6.1",
+    "tailwindcss": "^3.4.0",
+    "zustand": "^4.5.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}
+\end{lstlisting}
+
+\subsection{Backend Delivery API (pom.xml)}
+
+\begin{lstlisting}[language=xml, caption={Versions Backend Delivery - pom.xml (extrait)}, label={lst:pom-delivery}]
+<parent>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-parent</artifactId>
+    <version>3.2.2</version>
+</parent>
+
+<properties>
+    <java.version>17</java.version>
+    <mapstruct.version>1.5.5.Final</mapstruct.version>
+</properties>
+
+<dependencies>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-webflux</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-math3</artifactId>
+        <version>3.6.1</version>
+    </dependency>
+    <dependency>
+        <groupId>com.google.ortools</groupId>
+        <artifactId>ortools-java</artifactId>
+        <version>9.8.3296</version>
+    </dependency>
+</dependencies>
+\end{lstlisting}
+
+\subsection{Backend Petri Net API (pom.xml)}
+
+\begin{lstlisting}[language=xml, caption={Versions Backend Petri Net - pom.xml (extrait)}, label={lst:pom-petri}]
+<parent>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-parent</artifactId>
+    <version>3.4.0</version>
+</parent>
+
+<properties>
+    <java.version>17</java.version>
+</properties>
+
+<dependencies>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-webflux</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-data-r2dbc</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.postgresql</groupId>
+        <artifactId>r2dbc-postgresql</artifactId>
+    </dependency>
+</dependencies>
+\end{lstlisting}

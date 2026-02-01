@@ -12,7 +12,6 @@ import com.delivery.optimization.repository.KalmanStateRepository;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.math3.linear.ArrayRealVector;
 import org.apache.commons.math3.linear.MatrixUtils;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
@@ -32,7 +31,7 @@ public class ETAService {
         private final DeliveryRepository deliveryRepository;
         private final KalmanStateRepository kalmanStateRepository;
         private final ArcRepository arcRepository;
-        private final SimpMessagingTemplate messagingTemplate;
+        private final WebSocketBroadcaster webSocketBroadcaster;
 
         // Simple cache to avoid slamming the DB with findAll() on every pulse
         private List<Arc> cachedArcs = new CopyOnWriteArrayList<>();
@@ -151,15 +150,17 @@ public class ETAService {
                                                                                 .build();
 
                                                                 try {
-                                                                        messagingTemplate.convertAndSend(
+                                                                        // Broadcast ETA update to specific delivery topic
+                                                                        webSocketBroadcaster.sendToTopic(
                                                                                         "/topic/tracking/" + deliveryId,
                                                                                         response);
-                                                                        messagingTemplate.convertAndSend("/topic/fleet",
+                                                                        // Broadcast to global fleet topic
+                                                                        webSocketBroadcaster.sendToTopic("/topic/fleet",
                                                                                         Map.of("deliveryId", deliveryId,
                                                                                                         "data",
                                                                                                         response));
                                                                 } catch (Exception ex) {
-                                                                        log.warn("WS failure: {}", ex.getMessage());
+                                                                        log.warn("WS broadcast failure: {}", ex.getMessage());
                                                                 }
                                                                 return response;
                                                         });

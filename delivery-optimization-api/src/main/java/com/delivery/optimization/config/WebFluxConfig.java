@@ -6,9 +6,8 @@ import org.springframework.web.reactive.config.CorsRegistry;
 import org.springframework.web.reactive.config.WebFluxConfigurer;
 
 /**
- * ATTENTION: Cette configuration n'est PAS utilisée !
- * L'application utilise Spring MVC (à cause de spring-boot-starter-websocket), pas WebFlux.
- * La configuration CORS active est dans CorsConfig.java
+ * Configuration CORS pour WebFlux (serveur réactif Reactor Netty).
+ * Remplace l'ancienne configuration MVC après migration complète vers WebFlux.
  */
 @Configuration
 public class WebFluxConfig implements WebFluxConfigurer {

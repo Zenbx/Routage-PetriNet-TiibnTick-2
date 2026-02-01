@@ -117,8 +117,8 @@ export default function ReroutingAnalysisPage() {
                             </div>
                             <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
                                 <div
-                                    className={`h-2 rounded-full transition-all duration-1000 ${data?.costImprovement > (data?.threshold || 0) ? 'bg-blue-600' : 'bg-slate-300'}`}
-                                    style={{ width: `${Math.min(100, ((data?.costImprovement || 0) / 10) * 100)}%` }}
+                                    className={`h-2 rounded-full transition-all duration-1000 ${(data?.costImprovement ?? 0) > (data?.threshold ?? 0) ? 'bg-blue-600' : 'bg-slate-300'}`}
+                                    style={{ width: `${Math.min(100, ((data?.costImprovement ?? 0) / 10) * 100)}%` }}
                                 ></div>
                             </div>
                             <div

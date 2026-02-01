@@ -17,7 +17,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
@@ -47,7 +46,7 @@ class ETAServiceTest {
     private ArcRepository arcRepository;
 
     @Mock
-    private SimpMessagingTemplate messagingTemplate;
+    private WebSocketBroadcaster webSocketBroadcaster;
 
     @InjectMocks
     private ETAService etaService;

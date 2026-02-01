@@ -4,11 +4,11 @@ server:
 spring:
   application:
     name: petri-net-api
-  
+
   r2dbc:
-    url: r2dbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:petri_db}
-    username: ${DB_USER:postgres}
-    password: ${DB_PASSWORD:postgres}
+    url: r2dbc:postgresql://${PGHOST:localhost}:${PGPORT:5432}/${PGDATABASE:petri_db}
+    username: ${PGUSER:postgres}
+    password: ${PGPASSWORD:postgres}
     pool:
       initial-size: 5
       max-size: 10

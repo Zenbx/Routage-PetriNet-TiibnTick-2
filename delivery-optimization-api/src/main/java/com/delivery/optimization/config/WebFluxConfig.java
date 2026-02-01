@@ -5,6 +5,11 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.reactive.config.CorsRegistry;
 import org.springframework.web.reactive.config.WebFluxConfigurer;
 
+/**
+ * ATTENTION: Cette configuration n'est PAS utilisée !
+ * L'application utilise Spring MVC (à cause de spring-boot-starter-websocket), pas WebFlux.
+ * La configuration CORS active est dans CorsConfig.java
+ */
 @Configuration
 public class WebFluxConfig implements WebFluxConfigurer {
 

@@ -3,6 +3,8 @@ import React, { useEffect, useState, useMemo, useRef } from "react";
 import dynamic from "next/dynamic";
 import { graphApi } from "@/lib/api/graph";
 import { fetchApi } from "@/lib/api/client";
+import { routingApi } from "@/lib/api/routing";
+import { calculateRealisticProgress, calculateCurrentSpeed, type PathNode, type Arc as SimArc } from "@/lib/simulation";
 import {
     Activity,
     Truck,
@@ -38,6 +40,7 @@ export default function CommandCenter() {
     const [simStatus, setSimStatus] = useState<'IDLE' | 'RUNNING' | 'PAUSED'>('IDLE');
     const [showExpert, setShowExpert] = useState(false);
     const [weights, setWeights] = useState({ alpha: 0.2, beta: 0.5, gamma: 0.1, delta: 0.1, eta: 0.1 });
+    const [deliveryPaths, setDeliveryPaths] = useState<Record<string, PathNode[]>>({});
 
     const fleetStateRef = useRef<Record<string, any>>({});
     const { data: fleetUpdate } = useWebSocket<any>('/topic/fleet');
@@ -58,14 +61,42 @@ export default function CommandCenter() {
                 setDeliveries(active);
 
                 const initialFleet: Record<string, any> = {};
-                active.forEach((d: any) => {
+                const paths: Record<string, PathNode[]> = {};
+
+                // Calculer les chemins planifiés pour chaque livraison
+                await Promise.all(active.map(async (d: any) => {
                     initialFleet[d.id] = {
                         deliveryId: d.id,
                         data: { kalmanState: { distanceCovered: 0, estimatedSpeed: 30 } }
                     };
-                });
+
+                    try {
+                        // Calculer le chemin optimal
+                        const pathResult = await routingApi.calculateShortestPath({
+                            origin: d.pickupNodeId,
+                            destination: d.dropoffNodeId,
+                            costWeights: weights
+                        });
+
+                        // Convertir le chemin en PathNode[]
+                        if (pathResult.path && pathResult.path.length > 0) {
+                            paths[d.id] = pathResult.path.map((nodeId: string) => {
+                                const node = n.find((nd: any) => nd.id === nodeId);
+                                return {
+                                    nodeId: nodeId,
+                                    latitude: node?.latitude || 0,
+                                    longitude: node?.longitude || 0
+                                };
+                            });
+                        }
+                    } catch (error) {
+                        console.warn(`Failed to calculate path for ${d.id}:`, error);
+                    }
+                }));
+
                 setFleetState(initialFleet);
                 fleetStateRef.current = initialFleet;
+                setDeliveryPaths(paths);
             } catch (error) {
                 console.error("Dashboard init error", error);
             } finally {
@@ -97,12 +128,40 @@ export default function CommandCenter() {
                         .filter(del => (currentFleet[del.id]?.data?.kalmanState?.distanceCovered || 0) < 1.0)
                         .map(del => {
                             const currentProg = currentFleet[del.id]?.data?.kalmanState?.distanceCovered || 0;
-                            const nextProg = Math.min(currentProg + 0.01, 1.0); // 1% every 1s
+                            const path = deliveryPaths[del.id];
+
+                            let nextProg: number;
+                            let currentSpeed: number;
+
+                            if (path && path.length >= 2) {
+                                // Simulation réaliste basée sur les contraintes des arcs
+                                const baseSpeed = 40 + Math.random() * 20; // Vitesse de base variable par camion (40-60 km/h)
+                                const deltaTime = 1.0; // 1 seconde
+
+                                nextProg = calculateRealisticProgress(
+                                    currentProg,
+                                    path,
+                                    arcs as SimArc[],
+                                    baseSpeed,
+                                    deltaTime
+                                );
+
+                                currentSpeed = calculateCurrentSpeed(
+                                    nextProg,
+                                    path,
+                                    arcs as SimArc[],
+                                    baseSpeed
+                                );
+                            } else {
+                                // Fallback: progression linéaire si pas de chemin
+                                nextProg = Math.min(currentProg + 0.01, 1.0);
+                                currentSpeed = 30 + Math.random() * 20;
+                            }
 
                             return fetchApi(`/api/v1/tracking/${del.id}/update`, {
                                 method: 'POST',
                                 body: JSON.stringify({
-                                    currentSpeed: 30 + Math.random() * 20,
+                                    currentSpeed: currentSpeed,
                                     distanceCovered: nextProg,
                                     timestamp: new Date().toISOString()
                                 })
@@ -118,7 +177,7 @@ export default function CommandCenter() {
             }, 1000);
         }
         return () => clearInterval(timer);
-    }, [simStatus, deliveries.length]); // Minimize dependencies
+    }, [simStatus, deliveries.length, arcs.length, deliveryPaths]); // Include deps for realistic simulation
 
     const handleResetFleet = async () => {
         setSimStatus('IDLE');

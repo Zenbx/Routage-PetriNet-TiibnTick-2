@@ -25,31 +25,71 @@ public class PetriNetClient {
     private final WebClient petriNetWebClient;
 
     /**
-     * Crée un réseau de Petri pour le workflow de livraison
-     * Places: PENDING → ASSIGNED → IN_TRANSIT → DELIVERED
+     * Crée un réseau de Petri coloré temporisé pour le workflow de livraison.
+     * Format complet avec places, transitions, arcs et marquage initial.
      */
-    public Mono<String> createDeliveryWorkflowNet(String netId) {
+    public Mono<String> createDeliveryWorkflowNet(String deliveryId) {
+        log.info("Creating full Petri Net workflow for delivery: {}", deliveryId);
+
+        // Définition complète du réseau Petri
         Map<String, Object> netDto = new HashMap<>();
-        netDto.put("id", netId);
-        netDto.put("name", "Delivery Workflow");
-        netDto.put("places", List.of("PENDING", "ASSIGNED", "IN_TRANSIT", "DELIVERED", "FAILED"));
-        netDto.put("transitions", List.of(
-                Map.of("id", "ASSIGN", "from", "PENDING", "to", "ASSIGNED"),
-                Map.of("id", "START", "from", "ASSIGNED", "to", "IN_TRANSIT"),
-                Map.of("id", "COMPLETE", "from", "IN_TRANSIT", "to", "DELIVERED"),
-                Map.of("id", "FAIL", "from", "IN_TRANSIT", "to", "FAILED")
-        ));
+        netDto.put("id", deliveryId);
+        netDto.put("name", "Delivery Workflow - " + deliveryId);
+
+        // Places (États)
+        List<Map<String, Object>> places = List.of(
+                Map.of("id", "ASSIGNED", "colorType", "delivery"),
+                Map.of("id", "PICKED_UP", "colorType", "delivery"),
+                Map.of("id", "IN_TRANSIT", "colorType", "delivery"),
+                Map.of("id", "DELIVERED", "colorType", "delivery"),
+                Map.of("id", "DELAYED", "colorType", "delivery")
+        );
+        netDto.put("places", places);
+
+        // Transitions
+        List<Map<String, Object>> transitions = List.of(
+                Map.of("id", "START", "var", "delivery", "minTime", 0.0, "maxTime", 0.0),
+                Map.of("id", "DEPART", "var", "delivery", "minTime", 0.0, "maxTime", 0.0),
+                Map.of("id", "COMPLETE", "var", "delivery", "minTime", 0.0, "maxTime", 0.0),
+                Map.of("id", "DELAY", "var", "delivery", "minTime", 0.0, "maxTime", 0.0),
+                Map.of("id", "RESUME", "var", "delivery", "minTime", 0.0, "maxTime", 0.0)
+        );
+        netDto.put("transitions", transitions);
+
+        // Arcs (Connexions)
+        List<Map<String, Object>> arcs = List.of(
+                // Workflow normal
+                Map.of("source", "ASSIGNED", "target", "START", "weight", 1, "var", "delivery"),
+                Map.of("source", "START", "target", "PICKED_UP", "weight", 1, "var", "delivery"),
+                Map.of("source", "PICKED_UP", "target", "DEPART", "weight", 1, "var", "delivery"),
+                Map.of("source", "DEPART", "target", "IN_TRANSIT", "weight", 1, "var", "delivery"),
+                Map.of("source", "IN_TRANSIT", "target", "COMPLETE", "weight", 1, "var", "delivery"),
+                Map.of("source", "COMPLETE", "target", "DELIVERED", "weight", 1, "var", "delivery"),
+                // Gestion retards
+                Map.of("source", "ASSIGNED", "target", "DELAY", "weight", 1, "var", "delivery"),
+                Map.of("source", "PICKED_UP", "target", "DELAY", "weight", 1, "var", "delivery"),
+                Map.of("source", "IN_TRANSIT", "target", "DELAY", "weight", 1, "var", "delivery"),
+                Map.of("source", "DELAY", "target", "DELAYED", "weight", 1, "var", "delivery"),
+                Map.of("source", "DELAYED", "target", "RESUME", "weight", 1, "var", "delivery"),
+                Map.of("source", "RESUME", "target", "IN_TRANSIT", "weight", 1, "var", "delivery")
+        );
+        netDto.put("arcs", arcs);
+
+        // Marquage initial (token dans ASSIGNED)
+        Map<String, List<Map<String, Object>>> initialMarking = new HashMap<>();
+        initialMarking.put("ASSIGNED", List.of(Map.of("type", "delivery", "value", deliveryId)));
+        netDto.put("initialMarking", initialMarking);
 
         return petriNetWebClient.post()
                 .uri("/api/nets")
                 .bodyValue(netDto)
                 .retrieve()
                 .bodyToMono(String.class)
-                .doOnSuccess(id -> log.info("Created Petri Net for delivery workflow: {}", id))
+                .doOnSuccess(id -> log.info("Created complete Petri Net for delivery workflow: {}", id))
                 .doOnError(error -> log.error("Failed to create Petri Net: {}", error.getMessage()))
                 .onErrorResume(error -> {
                     log.warn("Petri Net API unavailable, proceeding without formal state management");
-                    return Mono.just(netId); // Fallback: continue without Petri Net
+                    return Mono.just(deliveryId); // Fallback: continue without Petri Net
                 });
     }
 

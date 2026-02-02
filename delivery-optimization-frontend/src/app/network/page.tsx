@@ -20,6 +20,7 @@ import {
 import CostSimulator, { CostWeights } from "@/components/network/CostSimulator";
 import CostBreakdownChart from "@/components/charts/CostBreakdownChart";
 import { routingApi } from "@/lib/api/routing";
+import TacticalScenarios from "@/components/tactical/TacticalScenarios";
 
 // Dynamically load map as background
 const NetworkGraph = dynamic(() => import("@/components/maps/NetworkGraph"), {
@@ -260,51 +261,10 @@ export default function NetworkCommandCenter() {
             </div>
 
             {/* RIGHT: SCENARIO CONTROLLER - GLASSMORPHIC */}
-            <div className="absolute top-28 right-6 w-72 z-10 pointer-events-none flex flex-col space-y-4">
-                {/* Scenario Controls */}
-                <div className="backdrop-blur-2xl bg-white/40 border border-white/60 rounded-3xl shadow-2xl shadow-black/10 p-6 pointer-events-auto">
-                    <div className="flex items-center space-x-3 mb-5">
-                        <div className="w-8 h-8 rounded-xl bg-orange-500/10 flex items-center justify-center backdrop-blur-sm">
-                            <Zap className="w-4 h-4 text-orange-600" />
-                        </div>
-                        <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wide">Scénarios</span>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3 mb-4">
-                        <button
-                            onClick={() => handleSimulation('traffic')}
-                            disabled={simulating}
-                            className="bg-white/70 backdrop-blur-sm hover:bg-white/90 p-4 rounded-2xl border border-white/80 flex flex-col items-center justify-center group transition-all shadow-lg"
-                        >
-                            <Activity className="w-5 h-5 text-slate-500 group-hover:text-blue-600 mb-2" />
-                            <span className="text-[10px] font-black text-slate-700 uppercase">Trafic</span>
-                        </button>
-
-                        <button
-                            onClick={() => handleSimulation('weather')}
-                            disabled={simulating}
-                            className="bg-white/70 backdrop-blur-sm hover:bg-white/90 p-4 rounded-2xl border border-white/80 flex flex-col items-center justify-center group transition-all shadow-lg"
-                        >
-                            <CloudRain className="w-5 h-5 text-slate-500 group-hover:text-blue-600 mb-2" />
-                            <span className="text-[10px] font-black text-slate-700 uppercase">Météo</span>
-                        </button>
-                    </div>
-
-                    <button
-                        onClick={async () => {
-                            setSimulating(true);
-                            try {
-                                await fetchApi('/api/v1/simulation/reroute', { method: 'POST' });
-                                await loadData();
-                            } catch (e) { console.error(e); }
-                            finally { setSimulating(false); }
-                        }}
-                        disabled={simulating}
-                        className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 p-4 rounded-2xl flex items-center justify-center space-x-3 transition-all shadow-2xl shadow-blue-500/30 text-white"
-                    >
-                        <Zap className="w-4 h-4" />
-                        <span className="text-[11px] font-black uppercase tracking-wide">Reroute Global</span>
-                    </button>
+            <div className="absolute top-28 right-6 w-80 z-10 pointer-events-none flex flex-col space-y-4">
+                {/* Tactical Scenarios Component */}
+                <div className="pointer-events-auto">
+                    <TacticalScenarios />
                 </div>
 
                 {/* COST SIMULATOR */}

@@ -10,9 +10,11 @@ public class CorsConfig implements WebFluxConfigurer {
     @Override
     public void addCorsMappings(org.springframework.web.reactive.config.CorsRegistry registry) {
         registry.addMapping("/**")
-                .allowedOrigins("https://pickndrop-frontend.onrender.com", "http://localhost:3000") // Added production
-                                                                                                    // and local
-                                                                                                    // frontend
+                .allowedOrigins(
+                        "https://pickndrop-frontend.onrender.com",
+                        "https://tiibntick-frontend-production.up.railway.app",
+                        "http://localhost:3000"
+                )
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")
                 .allowedHeaders("*")
                 .maxAge(3600);

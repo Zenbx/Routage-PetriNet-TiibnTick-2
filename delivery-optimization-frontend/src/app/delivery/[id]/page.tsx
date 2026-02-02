@@ -3,7 +3,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { useParams, useSearchParams } from "next/navigation";
 import { useWebSocket } from "@/hooks/useWebSocket";
-import { Truck, Navigation, Activity, MapPin, AlertCircle, ShieldCheck, Timer, Zap } from "lucide-react";
+import { Truck, Navigation, Activity, MapPin, AlertCircle, ShieldCheck, Timer, Zap, Play, Pause, RotateCcw } from "lucide-react";
 import { fetchApi } from "@/lib/api/client";
 import { routingApi } from "@/lib/api/routing";
 import { graphApi } from "@/lib/api/graph";
@@ -56,6 +56,10 @@ export default function DeliveryTrackingPage() {
     const [isUpdating, setIsUpdating] = useState(false);
     const isUpdatingRef = React.useRef(false);
     const [L, setL] = useState<any>(null);
+
+    // Automatic Journey State
+    const [isRunning, setIsRunning] = useState(false);
+    const intervalRef = React.useRef<NodeJS.Timeout | null>(null);
 
     // Tactical Traffic State
     const [isTrafficMode, setIsTrafficMode] = useState(false);
@@ -327,6 +331,68 @@ export default function DeliveryTrackingPage() {
         }
     };
 
+    // Automatic Journey Control
+    const startJourney = () => {
+        if (maxProgressRef.current >= 1.0) {
+            console.info("[AUTO] Mission déjà terminée. Réinitialisez d'abord.");
+            return;
+        }
+
+        setIsRunning(true);
+
+        // Lancer l'intervalle qui appelle simulatePulse toutes les 2 secondes
+        intervalRef.current = setInterval(() => {
+            if (maxProgressRef.current >= 1.0) {
+                stopJourney();
+                console.info("[AUTO] Destination atteinte!");
+            } else {
+                simulatePulse();
+            }
+        }, 2000); // Toutes les 2 secondes
+    };
+
+    const stopJourney = () => {
+        setIsRunning(false);
+        if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+        }
+    };
+
+    const resetJourney = async () => {
+        stopJourney();
+        maxProgressRef.current = 0;
+
+        setStats((prev: any) => ({
+            ...prev,
+            kalmanState: { ...prev?.kalmanState, distanceCovered: 0 }
+        }));
+
+        try {
+            await fetchApi(`/api/v1/tracking/${params.id}/update`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    currentSpeed: 0,
+                    distanceCovered: 0,
+                    totalDistance: pathMetadata.total,
+                    timestamp: new Date().toISOString()
+                })
+            });
+            fetchStats(true);
+        } catch (e) {
+            console.error("Reset failed", e);
+        }
+    };
+
+    // Cleanup interval on unmount
+    React.useEffect(() => {
+        return () => {
+            if (intervalRef.current) {
+                clearInterval(intervalRef.current);
+            }
+        };
+    }, []);
+
     // Tactical Traffic Injection
     const injectTraffic = async (origin: [number, number], dest: [number, number]) => {
         try {
@@ -494,12 +560,31 @@ export default function DeliveryTrackingPage() {
                     </button>
 
                     <button
-                        onClick={simulatePulse}
-                        disabled={isUpdating}
-                        className="tactical-module px-6 py-2 bg-slate-900 border-none text-white text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all active:scale-95 shadow-2xl flex items-center space-x-3 disabled:opacity-50"
+                        onClick={() => isRunning ? stopJourney() : startJourney()}
+                        disabled={isUpdating || maxProgressRef.current >= 1.0}
+                        className={`tactical-module px-6 py-2 border-none text-white text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 shadow-2xl flex items-center space-x-3 disabled:opacity-50
+                            ${isRunning ? 'bg-red-600 hover:bg-red-700' : 'bg-emerald-600 hover:bg-emerald-700'}`}
                     >
-                        <Zap className={`w-3.5 h-3.5 ${isUpdating ? 'animate-spin' : 'text-blue-400'}`} />
-                        <span>{isUpdating ? 'Synchronisation...' : 'Impulser Signal'}</span>
+                        {isRunning ? (
+                            <>
+                                <Pause className="w-3.5 h-3.5" />
+                                <span>Pause</span>
+                            </>
+                        ) : (
+                            <>
+                                <Play className="w-3.5 h-3.5" />
+                                <span>{maxProgressRef.current >= 1.0 ? 'Terminé' : 'Démarrer'}</span>
+                            </>
+                        )}
+                    </button>
+
+                    <button
+                        onClick={resetJourney}
+                        disabled={isUpdating}
+                        className="tactical-module px-6 py-2 bg-slate-700 border-none text-white text-[10px] font-black uppercase tracking-widest hover:bg-slate-600 transition-all active:scale-95 shadow-2xl flex items-center space-x-3 disabled:opacity-50"
+                    >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>Réinitialiser</span>
                     </button>
                 </div>
             </div>

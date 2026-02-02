@@ -63,7 +63,14 @@ export const petriNetApi = {
    * Vérifie si l'API Petri Net est disponible
    */
   async health(): Promise<string> {
-    return fetchPetriNet('/api/nets/health');
+    console.log(`[PETRI-NET] Fetching: ${PETRI_NET_API_URL}/api/nets/health`);
+    const response = await fetch(`${PETRI_NET_API_URL}/api/nets/health`);
+    const text = await response.text();
+    if (!response.ok) {
+      throw new PetriNetApiError(response.status, text);
+    }
+    console.log(`[PETRI-NET] Success (${response.status})`);
+    return text;
   },
 
   /**

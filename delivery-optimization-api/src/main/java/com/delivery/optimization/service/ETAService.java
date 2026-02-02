@@ -85,12 +85,26 @@ public class ETAService {
                                                                 List<Arc> allArcs = tuple.getT1();
                                                                 double pathBias = 1.0;
                                                                 try {
+                                                                        // Calculer le facteur de ralentissement combiné basé sur TOUS les critères
                                                                         pathBias = allArcs.stream()
-                                                                                        .filter(a -> a.getTrafficFactor() != null
-                                                                                                        && a.getTrafficFactor() > 1.1)
-                                                                                        .mapToDouble(a -> a
-                                                                                                        .getTrafficFactor())
-                                                                                        .max().orElse(1.0);
+                                                                                        .mapToDouble(arc -> {
+                                                                                                double traffic = (arc.getTrafficFactor() != null && arc.getTrafficFactor() > 1.0)
+                                                                                                        ? arc.getTrafficFactor()
+                                                                                                        : 1.0;
+                                                                                                double penibility = (arc.getPenibility() != null && arc.getPenibility() > 0)
+                                                                                                        ? (1.0 + arc.getPenibility() * 0.1)
+                                                                                                        : 1.0;
+                                                                                                double weather = (arc.getWeatherImpact() != null && arc.getWeatherImpact() > 0)
+                                                                                                        ? (1.0 + arc.getWeatherImpact() * 0.15)
+                                                                                                        : 1.0;
+
+                                                                                                // Facteur combiné: trafic * pénibilité * météo
+                                                                                                // Exemple: trafic=1.5, penibility=2.0, weather=1.0
+                                                                                                // => facteur = 1.5 * 1.2 * 1.0 = 1.8 (80% plus lent)
+                                                                                                return traffic * penibility * weather;
+                                                                                        })
+                                                                                        .max()
+                                                                                        .orElse(1.0);
                                                                 } catch (Exception ex) {
                                                                         log.warn("Bias calc error for {}", deliveryId);
                                                                 }
@@ -181,11 +195,22 @@ public class ETAService {
                                                         List<Arc> allArcs = tuple.getT1();
                                                         double confidence = Math.max(0,
                                                                         1.0 - state.getVariance() / 3.3);
+                                                        // Calculer le facteur de ralentissement combiné basé sur TOUS les critères
                                                         double pathBias = allArcs.stream()
-                                                                        .filter(a -> a.getTrafficFactor() != null
-                                                                                        && a.getTrafficFactor() > 1.1)
-                                                                        .mapToDouble(a -> a.getTrafficFactor())
-                                                                        .max().orElse(1.0);
+                                                                        .mapToDouble(arc -> {
+                                                                                double traffic = (arc.getTrafficFactor() != null && arc.getTrafficFactor() > 1.0)
+                                                                                        ? arc.getTrafficFactor()
+                                                                                        : 1.0;
+                                                                                double penibility = (arc.getPenibility() != null && arc.getPenibility() > 0)
+                                                                                        ? (1.0 + arc.getPenibility() * 0.1)
+                                                                                        : 1.0;
+                                                                                double weather = (arc.getWeatherImpact() != null && arc.getWeatherImpact() > 0)
+                                                                                        ? (1.0 + arc.getWeatherImpact() * 0.15)
+                                                                                        : 1.0;
+                                                                                return traffic * penibility * weather;
+                                                                        })
+                                                                        .max()
+                                                                        .orElse(1.0);
 
                                                         double remainingRatio = Math.max(0,
                                                                         1.0 - state.getDistanceCovered());

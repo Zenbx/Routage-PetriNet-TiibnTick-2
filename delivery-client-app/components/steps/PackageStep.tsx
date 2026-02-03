@@ -11,7 +11,7 @@ interface PackageStepProps {
 
 export function PackageStep({ onNext, onBack }: PackageStepProps) {
   const [formData, setFormData] = useState({
-    photo: null,
+    photoUrl: "",
     designation: "",
     description: "",
     weight: "",
@@ -68,8 +68,7 @@ export function PackageStep({ onNext, onBack }: PackageStepProps) {
     { id: "express24", label: "Express 24h", subtitle: "Livraison en 1 jour", icon: Zap },
   ];
 
-  const hasPhoto = false; // Simulation - à remplacer par vraie logique
-  const canContinue = formData.designation && formData.weight && hasPhoto;
+  const canContinue = formData.designation && formData.weight;
 
   return (
     <form onSubmit={handleSubmit} className="max-w-7xl mx-auto">
@@ -80,13 +79,28 @@ export function PackageStep({ onNext, onBack }: PackageStepProps) {
           <div className="card">
             <label className="block text-sm font-medium mb-2 flex items-center gap-2">
               <ImageIcon className="w-4 h-4 text-primary" />
-              Photo du colis <span className="text-primary">*</span>
+              Photo du colis (optionnel)
             </label>
-            <div className="border-2 border-dashed border-border rounded-xl p-12 text-center hover:border-primary transition-colors cursor-pointer">
-              <ImageIcon className="w-12 h-12 mx-auto mb-3 text-text-muted" />
-              <p className="text-text-muted">Cliquez pour ajouter une photo</p>
-              <p className="text-xs text-text-dark mt-1">PNG, JPG jusqu'à 5MB</p>
-            </div>
+            <input
+              type="url"
+              value={formData.photoUrl}
+              onChange={(e) => setFormData({ ...formData, photoUrl: e.target.value })}
+              placeholder="https://example.com/image.jpg"
+              className="input-field mb-3"
+            />
+            {formData.photoUrl && (
+              <div className="mt-3 border-2 border-border rounded-xl overflow-hidden">
+                <img
+                  src={formData.photoUrl}
+                  alt="Prévisualisation"
+                  className="w-full h-48 object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Crect fill='%23374151' width='200' height='200'/%3E%3Ctext fill='%239CA3AF' font-size='14' x='50%25' y='50%25' text-anchor='middle' dominant-baseline='middle'%3EImage invalide%3C/text%3E%3C/svg%3E";
+                  }}
+                />
+              </div>
+            )}
+            <p className="text-xs text-text-muted mt-2">Collez l'URL d'une image de votre colis</p>
           </div>
 
           {/* Informations de base */}
@@ -332,11 +346,6 @@ export function PackageStep({ onNext, onBack }: PackageStepProps) {
                   <p className="text-sm text-text-muted">Complétez le formulaire</p>
                 )}
               </div>
-              {!hasPhoto && (
-                <div className="bg-red-500/10 border border-red-500/30 p-3 rounded-lg text-red-400 text-xs">
-                  Veuillez ajouter une photo du colis
-                </div>
-              )}
             </div>
             <div className="mt-6 space-y-3">
               <button

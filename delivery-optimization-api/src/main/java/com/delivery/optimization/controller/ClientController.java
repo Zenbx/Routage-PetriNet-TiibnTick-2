@@ -83,9 +83,11 @@ public class ClientController {
                             // Deadline (optionnel)
                             .deadline(request.getPreferredDeadline())
 
-                            // Pour compatibilité avec ancien système (mapping locations → nodes)
-                            .pickupNodeId(request.getSender().getPickupLocationId())
-                            .dropoffNodeId(request.getRecipient().getDeliveryLocationId())
+                            // Pour compatibilité avec ancien système (nodes du graphe)
+                            // Ces champs sont null pour les livraisons créées par l'API client
+                            // Ils seront remplis plus tard lors de l'optimisation de tournée
+                            .pickupNodeId(null)
+                            .dropoffNodeId(null)
 
                             // Prix calculé (simplifié pour l'instant, à améliorer)
                             .price(calculateEstimatedPrice(request))

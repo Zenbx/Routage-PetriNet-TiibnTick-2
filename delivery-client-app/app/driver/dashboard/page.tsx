@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { api } from "@/lib/api";
 import {
   Package,
   MapPin,
@@ -32,70 +33,69 @@ interface Delivery {
 export default function DriverDashboardPage() {
   const [activeTab, setActiveTab] = useState<"available" | "active" | "completed">("available");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [availableDeliveries, setAvailableDeliveries] = useState<Delivery[]>([]);
+  const [activeDeliveries, setActiveDeliveries] = useState<Delivery[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Mock data - À remplacer par des appels API
   const driverStats = {
     name: "Jean Dupont",
     phone: "+237 699 12 34 56",
-    completedToday: 8,
-    earnings: 45000,
+    completedToday: activeDeliveries.filter(d => d.status === "DELIVERED").length,
+    earnings: activeDeliveries.filter(d => d.status === "DELIVERED").reduce((sum, d) => sum + d.price, 0),
     rating: 4.8,
   };
 
-  const availableDeliveries: Delivery[] = [
-    {
-      id: "1",
-      trackingCode: "TRK-ABC123",
-      senderCity: "Yaoundé",
-      recipientCity: "Douala",
-      distance: 245,
-      price: 8500,
-      pickupTime: "Aujourd'hui 14:00",
-      packageType: "Standard",
-      status: "AVAILABLE",
-    },
-    {
-      id: "2",
-      trackingCode: "TRK-DEF456",
-      senderCity: "Bafoussam",
-      recipientCity: "Yaoundé",
-      distance: 280,
-      price: 9200,
-      pickupTime: "Aujourd'hui 16:30",
-      packageType: "Express 24h",
-      status: "AVAILABLE",
-    },
-    {
-      id: "3",
-      trackingCode: "TRK-GHI789",
-      senderCity: "Douala",
-      recipientCity: "Limbé",
-      distance: 72,
-      price: 4500,
-      pickupTime: "Demain 09:00",
-      packageType: "Fragile",
-      status: "AVAILABLE",
-    },
-  ];
+  useEffect(() => {
+    fetchDeliveries();
+    const interval = setInterval(fetchDeliveries, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
-  const activeDeliveries: Delivery[] = [
-    {
-      id: "4",
-      trackingCode: "TRK-JKL012",
-      senderCity: "Yaoundé",
-      recipientCity: "Bertoua",
-      distance: 350,
-      price: 12000,
-      pickupTime: "En cours",
-      packageType: "Express 48h",
-      status: "IN_PROGRESS",
-    },
-  ];
+  const fetchDeliveries = async () => {
+    try {
+      const pending = await api.getAllDeliveries({ status: 'PENDING' });
+      const myDeliveries = await api.getAllDeliveries({ status: 'ACCEPTED,PICKED_UP,IN_TRANSIT,DELIVERED' });
 
-  const handleAcceptDelivery = (deliveryId: string) => {
-    console.log("Accepting delivery:", deliveryId);
-    // TODO: Intégrer avec l'API
-    alert("Livraison acceptée ! (À connecter à l'API)");
+      setAvailableDeliveries(pending.map((d: any) => ({
+        id: d.id,
+        trackingCode: d.trackingCode,
+        senderCity: d.senderCity,
+        recipientCity: d.recipientCity,
+        distance: d.distance || 0,
+        price: d.price,
+        pickupTime: "Dès que possible",
+        packageType: d.packageDescription,
+        status: "AVAILABLE" as const
+      })));
+
+      setActiveDeliveries(myDeliveries.map((d: any) => ({
+        id: d.id,
+        trackingCode: d.trackingCode,
+        senderCity: d.senderCity,
+        recipientCity: d.recipientCity,
+        distance: d.distance || 0,
+        price: d.price,
+        pickupTime: d.status === "DELIVERED" ? "Terminé" : "En cours",
+        packageType: d.packageDescription,
+        status: d.status === "DELIVERED" ? "DELIVERED" : "IN_PROGRESS" as const
+      })));
+    } catch (error) {
+      console.error("Erreur:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleAcceptDelivery = async (deliveryId: string) => {
+    try {
+      const driverId = "driver-123"; // TODO: get from auth
+      await api.assignDriver(deliveryId, driverId);
+      await api.updateDeliveryStatus(deliveryId, 'ACCEPTED');
+      fetchDeliveries();
+      alert("Livraison acceptée!");
+    } catch (error: any) {
+      alert(`Erreur: ${error.message}`);
+    }
   };
 
   return (

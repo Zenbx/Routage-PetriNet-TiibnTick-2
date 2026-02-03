@@ -1,0 +1,33 @@
+// Add to imports:
+import { useEffect } from "react";
+import { api } from "@/lib/api";
+
+// Replace in component:
+const [tours, setTours] = useState<Tour[]>([]);
+const [isLoading, setIsLoading] = useState(true);
+
+useEffect(() => {
+  fetchData();
+  const interval = setInterval(fetchData, 30000);
+  return () => clearInterval(interval);
+}, []);
+
+const fetchData = async () => {
+  try {
+    const allDeliveries = await api.getAllDeliveries();
+    const tourData = await api.getAllTours({ status: 'ACTIVE' });
+    setTours(tourData || []);
+    setStats({
+      activeTours: tourData?.length || 0,
+      activeDrivers: 15,
+      totalDeliveries: allDeliveries?.length || 0,
+      completedToday: allDeliveries?.filter((d: any) => d.status === 'DELIVERED').length || 0,
+      pendingDeliveries: allDeliveries?.filter((d: any) => d.status === 'PENDING').length || 0,
+      averageETA: "25 min",
+    });
+  } catch (error) {
+    console.error("Erreur:", error);
+  } finally {
+    setIsLoading(false);
+  }
+};

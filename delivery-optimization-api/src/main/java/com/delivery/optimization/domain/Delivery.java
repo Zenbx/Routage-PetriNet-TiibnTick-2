@@ -16,6 +16,8 @@ import java.time.Instant;
 public class Delivery {
     @Id
     private String id;
+
+    // Existing fields (keep for compatibility)
     private String pickupNodeId;
     private String dropoffNodeId;
     private Double weight;
@@ -23,7 +25,56 @@ public class Delivery {
     private DeliveryStatus status;
     private Instant createdAt;
 
+    // New fields for real logistics application
+    private String trackingCode;        // Code de suivi unique (ex: TRK-ABC123XYZ)
+    private String driverId;             // ID du livreur assigné
+
+    // Sender information
+    private String senderName;
+    private String senderPhone;
+    private String senderAddress;
+    private PickupType pickupType;       // RELAY_POINT ou HOME
+    private String pickupLocationId;     // ID du point relais ou coordonnées domicile
+
+    // Recipient information
+    private String recipientName;
+    private String recipientPhone;
+    private String recipientAddress;
+    private DeliveryType deliveryType;   // RELAY_POINT ou HOME
+    private String deliveryLocationId;   // ID du point relais ou coordonnées domicile
+
+    // Package information
+    private String packageDescription;
+    private Double packageLength;        // cm
+    private Double packageWidth;         // cm
+    private Double packageHeight;        // cm
+
+    // Timestamps
+    private Instant acceptedAt;          // Quand le livreur a accepté
+    private Instant pickedUpAt;          // Quand le colis a été récupéré
+    private Instant deliveredAt;         // Quand le colis a été livré
+
+    // Pricing
+    private Double price;                // Prix de la livraison
+
     public enum DeliveryStatus {
-        PENDING, ASSIGNED, PICKED_UP, IN_TRANSIT, DELIVERED, DELAYED
+        PENDING,      // En attente d'un livreur
+        ASSIGNED,     // Assignée à un livreur (ancien)
+        ACCEPTED,     // Livreur a accepté la livraison
+        PICKED_UP,    // Colis récupéré
+        IN_TRANSIT,   // En cours de livraison
+        DELIVERED,    // Livré
+        DELAYED,      // Retardé
+        CANCELLED     // Annulé
+    }
+
+    public enum PickupType {
+        RELAY_POINT,  // Récupération au point relais
+        HOME          // Récupération au domicile
+    }
+
+    public enum DeliveryType {
+        RELAY_POINT,  // Livraison au point relais
+        HOME          // Livraison au domicile
     }
 }

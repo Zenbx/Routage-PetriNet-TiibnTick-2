@@ -54,6 +54,7 @@ public class ClientController {
                     // Créer la livraison
                     Delivery delivery = Delivery.builder()
                             .id(UUID.randomUUID().toString())
+                            .newEntity(true)  // Marquer comme nouvelle entité pour Spring Data R2DBC
                             .trackingCode(trackingCode)
                             .status(Delivery.DeliveryStatus.PENDING)
                             .createdAt(Instant.now())

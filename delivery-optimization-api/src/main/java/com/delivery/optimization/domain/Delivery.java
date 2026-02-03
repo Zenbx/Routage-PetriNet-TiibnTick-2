@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Transient;
+import org.springframework.data.domain.Persistable;
 import org.springframework.data.relational.core.mapping.Table;
 import java.time.Instant;
 
@@ -13,9 +15,12 @@ import java.time.Instant;
 @NoArgsConstructor
 @AllArgsConstructor
 @Table("deliveries")
-public class Delivery {
+public class Delivery implements Persistable<String> {
     @Id
     private String id;
+
+    @Transient
+    private boolean newEntity;
 
     // Existing fields (keep for compatibility)
     private String pickupNodeId;
@@ -76,5 +81,16 @@ public class Delivery {
     public enum DeliveryType {
         RELAY_POINT,  // Livraison au point relais
         HOME          // Livraison au domicile
+    }
+
+    // Persistable implementation pour contrôler quand l'entité est considérée comme nouvelle
+    @Override
+    public String getId() {
+        return id;
+    }
+
+    @Override
+    public boolean isNew() {
+        return newEntity || id == null;
     }
 }

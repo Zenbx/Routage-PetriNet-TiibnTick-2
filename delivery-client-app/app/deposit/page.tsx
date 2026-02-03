@@ -62,46 +62,34 @@ export default function DepositPage() {
       if (completeData.package?.homePickup) totalPrice += 1000;
       if (completeData.package?.homeDelivery) totalPrice += 1000;
 
-      // Préparer les données pour l'API
+      // Préparer les données pour l'API (structure imbriquée attendue par le backend)
       const deliveryRequest = {
-        senderName: completeData.sender.name,
-        senderPhone: completeData.sender.phone,
-        senderEmail: completeData.sender.email || "",
-        senderAddress: completeData.sender.address,
-        senderCity: completeData.sender.city,
-        senderRegion: completeData.sender.region,
-        senderCountry: completeData.sender.country,
-        senderLandmark: completeData.sender.landmark || "",
-
-        recipientName: completeData.recipient.name,
-        recipientPhone: completeData.recipient.phone,
-        recipientEmail: completeData.recipient.email || "",
-        recipientAddress: completeData.recipient.address,
-        recipientCity: completeData.recipient.city,
-        recipientRegion: completeData.recipient.region,
-        recipientCountry: completeData.recipient.country,
-        recipientLandmark: completeData.recipient.landmark || "",
-
-        packageDescription: completeData.package.description || "Colis",
-        packageWeight: parseFloat(completeData.package.weight) || 1,
-        packageLength: parseFloat(completeData.package.length) || 0,
-        packageWidth: parseFloat(completeData.package.width) || 0,
-        packageHeight: parseFloat(completeData.package.height) || 0,
-        isFragile: completeData.package.fragile || false,
-        isPerishable: completeData.package.perishable || false,
-        isLiquid: completeData.package.liquid || false,
-        isInsured: completeData.package.insured || false,
-
-        transportMode: completeData.package.transportMode || "Camion",
-        homePickup: completeData.package.homePickup || false,
-        homeDelivery: completeData.package.homeDelivery || false,
-        expressDelivery: completeData.package.expressDelivery || "standard",
-        preferredDate: completeData.trajet?.date || "",
-        preferredTimeSlot: completeData.trajet?.timeSlot || "",
-        specialInstructions: completeData.trajet?.instructions || "",
-
-        price: totalPrice,
-        paymentMethod: completeData.paiement?.method || "cash",
+        sender: {
+          name: completeData.sender.name,
+          phone: completeData.sender.phone,
+          address: `${completeData.sender.address}, ${completeData.sender.city}, ${completeData.sender.region}`,
+          pickupType: completeData.package.homePickup ? "HOME" : "RELAY_POINT",
+          pickupLocationId: completeData.package.homePickup
+            ? `${completeData.sender.city}_HOME`
+            : `RELAY_${completeData.sender.city}`,
+        },
+        recipient: {
+          name: completeData.recipient.name,
+          phone: completeData.recipient.phone,
+          address: `${completeData.recipient.address}, ${completeData.recipient.city}, ${completeData.recipient.region}`,
+          deliveryType: completeData.package.homeDelivery ? "HOME" : "RELAY_POINT",
+          deliveryLocationId: completeData.package.homeDelivery
+            ? `${completeData.recipient.city}_HOME`
+            : `RELAY_${completeData.recipient.city}`,
+        },
+        package_: {
+          description: completeData.package.designation || "Colis",
+          weight: parseFloat(completeData.package.weight) || 1,
+          length: parseFloat(completeData.package.length) || 0,
+          width: parseFloat(completeData.package.width) || 0,
+          height: parseFloat(completeData.package.height) || 0,
+        },
+        specialInstructions: completeData.trajet?.notes || "",
       };
 
       // Appel API

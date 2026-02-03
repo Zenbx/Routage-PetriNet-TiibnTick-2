@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { api } from "@/lib/api";
 
 // Types
 interface Delivery {
@@ -59,86 +60,80 @@ export default function TourDetailsPage() {
   const tourId = params.id as string;
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [tour, setTour] = useState<TourDetails | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Mock data - À remplacer par appel API WebSocket pour temps réel
-  const tour: TourDetails = {
-    id: tourId,
-    driverName: "Jean Dupont",
-    driverPhone: "+237 699 12 34 56",
-    vehicleType: "Camion",
-    vehiclePlate: "LT-1234-CM",
-    startTime: "08:30",
-    currentLocation: {
-      lat: 3.848,
-      lng: 11.502,
-      address: "Yaoundé, Melen, Rue 1.234",
-    },
-    deliveries: [
-      {
-        id: "D001",
-        trackingCode: "TRK-ABC123",
-        recipientName: "Paul Njiki",
-        recipientAddress: "Quartier Bastos, Rue principale",
-        recipientCity: "Yaoundé",
-        recipientPhone: "+237 677 98 76 54",
-        status: "DELIVERED",
-        eta: "-",
-        sequence: 1,
-        estimatedArrival: "09:15",
-      },
-      {
-        id: "D002",
-        trackingCode: "TRK-DEF456",
-        recipientName: "Marie Kamga",
-        recipientAddress: "Carrefour Nlongkak, près du marché",
-        recipientCity: "Yaoundé",
-        recipientPhone: "+237 655 11 22 33",
-        status: "IN_PROGRESS",
-        eta: "8 min",
-        sequence: 2,
-        estimatedArrival: "10:30",
-      },
-      {
-        id: "D003",
-        trackingCode: "TRK-GHI789",
-        recipientName: "Alice Nkomo",
-        recipientAddress: "Essos, Face église",
-        recipientCity: "Yaoundé",
-        recipientPhone: "+237 688 44 55 66",
-        status: "PENDING",
-        eta: "35 min",
-        sequence: 3,
-        estimatedArrival: "11:15",
-      },
-      {
-        id: "D004",
-        trackingCode: "TRK-JKL012",
-        recipientName: "Joseph Mballa",
-        recipientAddress: "Biyem-Assi, Carrefour",
-        recipientCity: "Yaoundé",
-        recipientPhone: "+237 699 77 88 99",
-        status: "PENDING",
-        eta: "1h 05min",
-        sequence: 4,
-        estimatedArrival: "12:00",
-      },
-    ],
-    totalDistance: 45.2,
-    distanceCovered: 18.5,
-    averageSpeed: 28.5,
-    estimatedCompletion: "13:30",
-    status: "ACTIVE",
+  // Fetch tour data
+  const fetchTourData = async () => {
+    try {
+      setIsRefreshing(true);
+
+      // Fetch all active deliveries to find those belonging to this tour
+      // Note: In real implementation, you'd have a specific tour endpoint
+      const allDeliveries = await api.getAllDeliveries({
+        status: "ACCEPTED,PICKED_UP,IN_TRANSIT,DELIVERED",
+      });
+
+      // For now, group deliveries by a pattern (e.g., first few deliveries with same driver)
+      // In production, you'd use a real tour ID from the backend
+      const mockDeliveries = allDeliveries.slice(0, 4);
+
+      if (mockDeliveries.length > 0) {
+        const mappedDeliveries: Delivery[] = mockDeliveries.map((d: any, index: number) => ({
+          id: d.id,
+          trackingCode: d.trackingCode,
+          recipientName: d.recipientName,
+          recipientAddress: d.recipientAddress,
+          recipientCity: d.recipientCity,
+          recipientPhone: d.recipientPhone,
+          status: d.status === "DELIVERED" ? "DELIVERED" : d.status === "IN_TRANSIT" ? "IN_PROGRESS" : "PENDING",
+          eta: d.status !== "DELIVERED" ? "N/A" : "-",
+          sequence: index + 1,
+          estimatedArrival: new Date(Date.now() + index * 3600000).toLocaleTimeString("fr-FR", {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        }));
+
+        const completedCount = mappedDeliveries.filter((d) => d.status === "DELIVERED").length;
+
+        setTour({
+          id: tourId,
+          driverName: mockDeliveries[0].driverId || "Livreur",
+          driverPhone: "+237 699 12 34 56",
+          vehicleType: "Véhicule",
+          vehiclePlate: "N/A",
+          startTime: new Date(mockDeliveries[0].acceptedAt || Date.now()).toLocaleTimeString("fr-FR", {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          currentLocation: {
+            lat: 3.848,
+            lng: 11.502,
+            address: `${mockDeliveries[0].senderCity}, ${mockDeliveries[0].senderRegion}`,
+          },
+          deliveries: mappedDeliveries,
+          totalDistance: 0,
+          distanceCovered: 0,
+          averageSpeed: 0,
+          estimatedCompletion: "N/A",
+          status: completedCount === mappedDeliveries.length ? "COMPLETED" : "ACTIVE",
+        });
+      }
+    } catch (error) {
+      console.error("Erreur lors du chargement de la tournée:", error);
+    } finally {
+      setIsRefreshing(false);
+      setLoading(false);
+    }
   };
 
-  const completedCount = tour.deliveries.filter((d) => d.status === "DELIVERED").length;
-  const progress = (completedCount / tour.deliveries.length) * 100;
+  useEffect(() => {
+    fetchTourData();
+  }, [tourId]);
 
   const handleRefresh = () => {
-    setIsRefreshing(true);
-    // TODO: Appel API pour rafraîchir les données en temps réel
-    setTimeout(() => {
-      setIsRefreshing(false);
-    }, 1000);
+    fetchTourData();
   };
 
   // Auto-refresh every 10 seconds if enabled
@@ -149,6 +144,34 @@ export default function TourDetailsPage() {
     }, 10000);
     return () => clearInterval(interval);
   }, [autoRefresh]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-text-muted">Chargement de la tournée...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!tour) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <p className="text-text-muted">Tournée introuvable</p>
+          <Link href="/admin/dashboard" className="btn-primary mt-4 inline-block">
+            Retour au tableau de bord
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const completedCount = tour.deliveries.filter((d) => d.status === "DELIVERED").length;
+  const progress = (completedCount / tour.deliveries.length) * 100;
 
   return (
     <div className="min-h-screen bg-background pb-8">

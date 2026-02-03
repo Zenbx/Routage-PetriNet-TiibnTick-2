@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   ArrowLeft,
   MapPin,
@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import { api } from "@/lib/api";
 
 // Types
 interface DeliveryDetails {
@@ -60,60 +61,122 @@ export default function DeliveryDetailsPage() {
   const router = useRouter();
   const deliveryId = params.id as string;
 
-  // Mock data - À remplacer par un appel API
-  const delivery: DeliveryDetails = {
-    id: deliveryId,
-    trackingCode: "TRK-JKL012",
-    status: "IN_TRANSIT",
-    createdAt: "2024-01-15 10:30",
-
-    senderName: "Marie Kamga",
-    senderPhone: "+237 699 12 34 56",
-    senderAddress: "Quartier Melen, Rue 1.234",
-    senderCity: "Yaoundé",
-    senderRegion: "Centre",
-    senderLandmark: "Face à la pharmacie du coin",
-
-    recipientName: "Paul Njiki",
-    recipientPhone: "+237 677 98 76 54",
-    recipientAddress: "Carrefour Mokolo, Rue principale",
-    recipientCity: "Bertoua",
-    recipientRegion: "Est",
-    recipientLandmark: "À côté de l'église",
-
-    packageDescription: "Vêtements et documents",
-    packageWeight: 5.5,
-    packageDimensions: "40x30x20 cm",
-    isFragile: false,
-    isPerishable: false,
-    isInsured: true,
-
-    distance: 350,
-    estimatedDuration: "5h 30min",
-    price: 12000,
-  };
-
-  const [currentStatus, setCurrentStatus] = useState(delivery.status);
+  const [delivery, setDelivery] = useState<DeliveryDetails | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [currentStatus, setCurrentStatus] = useState<"ACCEPTED" | "PICKED_UP" | "IN_TRANSIT" | "DELIVERED">("ACCEPTED");
   const [showProofUpload, setShowProofUpload] = useState(false);
 
-  const handleStatusUpdate = (newStatus: typeof currentStatus) => {
+  // Fetch delivery details
+  useEffect(() => {
+    const fetchDelivery = async () => {
+      try {
+        const data = await api.getDelivery(deliveryId);
+
+        // Map API response to DeliveryDetails
+        const mappedDelivery: DeliveryDetails = {
+          id: data.id,
+          trackingCode: data.trackingCode,
+          status: data.status as any,
+          createdAt: new Date(data.createdAt).toLocaleString(),
+
+          senderName: data.senderName,
+          senderPhone: data.senderPhone,
+          senderAddress: data.senderAddress,
+          senderCity: data.senderCity,
+          senderRegion: data.senderRegion,
+          senderLandmark: data.senderLandmark || "",
+
+          recipientName: data.recipientName,
+          recipientPhone: data.recipientPhone,
+          recipientAddress: data.recipientAddress,
+          recipientCity: data.recipientCity,
+          recipientRegion: data.recipientRegion,
+          recipientLandmark: data.recipientLandmark || "",
+
+          packageDescription: data.packageDescription || "Colis",
+          packageWeight: data.weight || 0,
+          packageDimensions: data.packageLength && data.packageWidth && data.packageHeight
+            ? `${data.packageLength}x${data.packageWidth}x${data.packageHeight} cm`
+            : "N/A",
+          isFragile: data.packageDescription?.includes("Fragile") || false,
+          isPerishable: data.packageDescription?.includes("Périssable") || false,
+          isInsured: true,
+
+          distance: 0,
+          estimatedDuration: "N/A",
+          price: data.price || 0,
+        };
+
+        setDelivery(mappedDelivery);
+        setCurrentStatus(mappedDelivery.status);
+      } catch (error) {
+        console.error("Erreur lors de la récupération de la livraison:", error);
+        alert("Impossible de charger les détails de la livraison");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDelivery();
+  }, [deliveryId]);
+
+  const handleStatusUpdate = async (newStatus: typeof currentStatus) => {
     if (newStatus === "DELIVERED") {
       setShowProofUpload(true);
     } else {
-      setCurrentStatus(newStatus);
-      console.log("Status updated to:", newStatus);
-      // TODO: Appel API pour mettre à jour le statut
+      try {
+        await api.updateDeliveryStatus(deliveryId, newStatus);
+        setCurrentStatus(newStatus);
+
+        // Si passage en IN_TRANSIT, on pourrait démarrer le GPS tracking ici
+        if (newStatus === "IN_TRANSIT") {
+          // TODO: Démarrer le tracking GPS avec Kalman filter
+          console.log("GPS tracking started");
+        }
+      } catch (error) {
+        console.error("Erreur lors de la mise à jour du statut:", error);
+        alert("Impossible de mettre à jour le statut");
+      }
     }
   };
 
-  const handleDeliveryComplete = () => {
-    setCurrentStatus("DELIVERED");
-    console.log("Delivery completed");
-    // TODO: Appel API pour finaliser la livraison
-    setTimeout(() => {
-      router.push("/driver/dashboard");
-    }, 1500);
+  const handleDeliveryComplete = async () => {
+    try {
+      await api.updateDeliveryStatus(deliveryId, "DELIVERED");
+      setCurrentStatus("DELIVERED");
+      setTimeout(() => {
+        router.push("/driver/dashboard");
+      }, 1500);
+    } catch (error) {
+      console.error("Erreur lors de la finalisation:", error);
+      alert("Impossible de finaliser la livraison");
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-text-muted">Chargement...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!delivery) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <p className="text-text-muted">Livraison introuvable</p>
+          <Link href="/driver/dashboard" className="btn-primary mt-4 inline-block">
+            Retour au tableau de bord
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   const openNavigation = () => {
     const destination = `${delivery.recipientAddress}, ${delivery.recipientCity}`;

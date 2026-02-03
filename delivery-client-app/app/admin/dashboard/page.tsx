@@ -21,6 +21,7 @@ import {
   Phone,
 } from "lucide-react";
 import Link from "next/link";
+import { api } from "@/lib/api";
 
 // Types
 interface Tour {
@@ -52,82 +53,94 @@ export default function AdminDashboardPage() {
   const [selectedFilter, setSelectedFilter] = useState<"all" | "active" | "paused" | "completed">("all");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [stats, setStats] = useState<Stats>({
+    activeTours: 0,
+    activeDrivers: 0,
+    totalDeliveries: 0,
+    completedToday: 0,
+    pendingDeliveries: 0,
+    averageETA: "N/A",
+  });
+  const [tours, setTours] = useState<Tour[]>([]);
 
-  // Mock data - À remplacer par appels API en temps réel
-  const stats: Stats = {
-    activeTours: 12,
-    activeDrivers: 15,
-    totalDeliveries: 48,
-    completedToday: 32,
-    pendingDeliveries: 16,
-    averageETA: "25 min",
+  // Fetch data from API
+  const fetchData = async () => {
+    try {
+      setIsRefreshing(true);
+
+      // Fetch all deliveries for stats
+      const allDeliveries = await api.getAllDeliveries();
+
+      // Fetch tours (using deliveries with drivers as proxy for tours)
+      const activeDel = await api.getAllDeliveries({
+        status: "ACCEPTED,PICKED_UP,IN_TRANSIT",
+      });
+
+      // Calculate stats
+      const deliveredToday = allDeliveries.filter(
+        (d: any) =>
+          d.status === "DELIVERED" &&
+          new Date(d.deliveredAt).toDateString() === new Date().toDateString()
+      );
+
+      setStats({
+        activeTours: activeDel.filter((d: any) => d.driverId).length,
+        activeDrivers: new Set(activeDel.map((d: any) => d.driverId).filter(Boolean)).size,
+        totalDeliveries: allDeliveries.length,
+        completedToday: deliveredToday.length,
+        pendingDeliveries: allDeliveries.filter((d: any) => d.status === "PENDING").length,
+        averageETA: "25 min",
+      });
+
+      // Group deliveries by driver to create "tours"
+      const driverGroups = new Map<string, any[]>();
+      activeDel.forEach((delivery: any) => {
+        if (delivery.driverId) {
+          if (!driverGroups.has(delivery.driverId)) {
+            driverGroups.set(delivery.driverId, []);
+          }
+          driverGroups.get(delivery.driverId)!.push(delivery);
+        }
+      });
+
+      // Convert to Tour objects
+      const toursData: Tour[] = Array.from(driverGroups.entries()).map(
+        ([driverId, deliveries], index) => {
+          const completed = deliveries.filter((d) => d.status === "DELIVERED").length;
+          return {
+            id: `T${String(index + 1).padStart(3, "0")}`,
+            driverName: driverId || "Livreur inconnu",
+            driverPhone: deliveries[0]?.driverPhone || "N/A",
+            vehicleType: "Véhicule",
+            deliveriesCount: deliveries.length,
+            completedCount: completed,
+            currentLocation: deliveries[0]?.senderCity || "N/A",
+            nextStop: deliveries.find((d: any) => d.status !== "DELIVERED")?.recipientCity || "-",
+            eta: "N/A",
+            totalDistance: 0,
+            status: completed === deliveries.length ? "COMPLETED" : "ACTIVE",
+            startTime: new Date(deliveries[0]?.acceptedAt || Date.now()).toLocaleTimeString("fr-FR", {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+          };
+        }
+      );
+
+      setTours(toursData);
+    } catch (error) {
+      console.error("Erreur lors du chargement des données:", error);
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
-  const tours: Tour[] = [
-    {
-      id: "T001",
-      driverName: "Jean Dupont",
-      driverPhone: "+237 699 12 34 56",
-      vehicleType: "Camion",
-      deliveriesCount: 8,
-      completedCount: 5,
-      currentLocation: "Yaoundé, Melen",
-      nextStop: "Yaoundé, Bastos",
-      eta: "12 min",
-      totalDistance: 45.2,
-      status: "ACTIVE",
-      startTime: "08:30",
-    },
-    {
-      id: "T002",
-      driverName: "Marie Kamga",
-      driverPhone: "+237 677 98 76 54",
-      vehicleType: "Moto",
-      deliveriesCount: 6,
-      completedCount: 4,
-      currentLocation: "Douala, Akwa",
-      nextStop: "Douala, Bonanjo",
-      eta: "8 min",
-      totalDistance: 28.5,
-      status: "ACTIVE",
-      startTime: "09:00",
-    },
-    {
-      id: "T003",
-      driverName: "Paul Njiki",
-      driverPhone: "+237 655 11 22 33",
-      vehicleType: "Voiture",
-      deliveriesCount: 5,
-      completedCount: 3,
-      currentLocation: "Bafoussam, Centre",
-      nextStop: "Bafoussam, Tamdja",
-      eta: "15 min",
-      totalDistance: 35.8,
-      status: "ACTIVE",
-      startTime: "08:45",
-    },
-    {
-      id: "T004",
-      driverName: "Alice Nkomo",
-      driverPhone: "+237 688 44 55 66",
-      vehicleType: "Tricycle",
-      deliveriesCount: 4,
-      completedCount: 4,
-      currentLocation: "Yaoundé, Nlongkak",
-      nextStop: "-",
-      eta: "-",
-      totalDistance: 22.3,
-      status: "COMPLETED",
-      startTime: "07:30",
-    },
-  ];
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   const handleRefresh = () => {
-    setIsRefreshing(true);
-    // TODO: Appeler l'API pour rafraîchir les données
-    setTimeout(() => {
-      setIsRefreshing(false);
-    }, 1000);
+    fetchData();
   };
 
   const filteredTours = tours.filter((tour) => {

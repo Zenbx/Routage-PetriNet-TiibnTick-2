@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   ArrowLeft,
   Package,
@@ -19,6 +19,7 @@ import {
   Eye,
 } from "lucide-react";
 import Link from "next/link";
+import { api } from "@/lib/api";
 
 // Types
 interface Delivery {
@@ -47,93 +48,45 @@ export default function DeliveriesManagementPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | Delivery["status"]>("all");
   const [selectedDelivery, setSelectedDelivery] = useState<Delivery | null>(null);
+  const [deliveries, setDeliveries] = useState<Delivery[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock data - À remplacer par appel API
-  const deliveries: Delivery[] = [
-    {
-      id: "1",
-      trackingCode: "TRK-ABC123",
-      createdAt: "2024-01-15 08:30",
-      status: "IN_TRANSIT",
-      senderName: "Marie Kamga",
-      senderCity: "Yaoundé",
-      senderPhone: "+237 699 12 34 56",
-      recipientName: "Paul Njiki",
-      recipientCity: "Douala",
-      recipientPhone: "+237 677 98 76 54",
-      packageDescription: "Documents officiels",
-      packageWeight: 2.5,
-      driverName: "Jean Dupont",
-      price: 8500,
-      distance: 245,
-    },
-    {
-      id: "2",
-      trackingCode: "TRK-DEF456",
-      createdAt: "2024-01-15 09:15",
-      status: "PENDING",
-      senderName: "Joseph Mballa",
-      senderCity: "Bafoussam",
-      senderPhone: "+237 655 11 22 33",
-      recipientName: "Alice Nkomo",
-      recipientCity: "Yaoundé",
-      recipientPhone: "+237 688 44 55 66",
-      packageDescription: "Vêtements",
-      packageWeight: 5.0,
-      price: 6200,
-      distance: 280,
-    },
-    {
-      id: "3",
-      trackingCode: "TRK-GHI789",
-      createdAt: "2024-01-15 10:00",
-      status: "ACCEPTED",
-      senderName: "Sophie Ndam",
-      senderCity: "Douala",
-      senderPhone: "+237 699 77 88 99",
-      recipientName: "Thomas Biya",
-      recipientCity: "Limbé",
-      recipientPhone: "+237 677 55 44 33",
-      packageDescription: "Matériel électronique",
-      packageWeight: 8.5,
-      driverName: "Marie Kamga",
-      price: 5500,
-      distance: 72,
-    },
-    {
-      id: "4",
-      trackingCode: "TRK-JKL012",
-      createdAt: "2024-01-14 16:30",
-      status: "DELIVERED",
-      senderName: "Pierre Ngono",
-      senderCity: "Yaoundé",
-      senderPhone: "+237 688 99 00 11",
-      recipientName: "Emma Foe",
-      recipientCity: "Bertoua",
-      recipientPhone: "+237 655 22 33 44",
-      packageDescription: "Livres et fournitures",
-      packageWeight: 12.0,
-      driverName: "Paul Njiki",
-      price: 12000,
-      distance: 350,
-    },
-    {
-      id: "5",
-      trackingCode: "TRK-MNO345",
-      createdAt: "2024-01-15 11:20",
-      status: "CANCELLED",
-      senderName: "David Kana",
-      senderCity: "Garoua",
-      senderPhone: "+237 699 11 22 33",
-      recipientName: "Sarah Momo",
-      recipientCity: "Maroua",
-      recipientPhone: "+237 677 88 99 00",
-      packageDescription: "Denrées alimentaires",
-      packageWeight: 15.0,
-      price: 7800,
-      distance: 120,
-    },
-  ];
+  // Fetch deliveries from API
+  useEffect(() => {
+    const fetchDeliveries = async () => {
+      try {
+        setLoading(true);
+        const filters = statusFilter !== "all" ? { status: statusFilter } : {};
+        const data = await api.getAllDeliveries(filters);
+
+        const mappedDeliveries: Delivery[] = data.map((d: any) => ({
+          id: d.id,
+          trackingCode: d.trackingCode,
+          createdAt: new Date(d.createdAt).toLocaleString(),
+          status: d.status,
+          senderName: d.senderName,
+          senderCity: d.senderCity,
+          senderPhone: d.senderPhone,
+          recipientName: d.recipientName,
+          recipientCity: d.recipientCity,
+          recipientPhone: d.recipientPhone,
+          packageDescription: d.packageDescription || "Colis",
+          packageWeight: d.weight || 0,
+          driverName: d.driverId || undefined,
+          price: d.price || 0,
+          distance: 0,
+        }));
+
+        setDeliveries(mappedDeliveries);
+      } catch (error) {
+        console.error("Erreur lors du chargement des livraisons:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDeliveries();
+  }, [statusFilter]);
 
   const filteredDeliveries = deliveries.filter((delivery) => {
     const matchesStatus = statusFilter === "all" || delivery.status === statusFilter;
@@ -239,7 +192,12 @@ export default function DeliveriesManagementPage() {
 
         {/* Deliveries List */}
         <div className="space-y-4">
-          {filteredDeliveries.length > 0 ? (
+          {loading ? (
+            <div className="card text-center py-12">
+              <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-text-muted">Chargement des livraisons...</p>
+            </div>
+          ) : filteredDeliveries.length > 0 ? (
             filteredDeliveries.map((delivery) => (
               <DeliveryCard
                 key={delivery.id}

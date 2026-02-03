@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   ArrowLeft,
   Truck,
@@ -17,6 +17,7 @@ import {
   Navigation,
 } from "lucide-react";
 import Link from "next/link";
+import { api } from "@/lib/api";
 
 // Types
 interface Driver {
@@ -38,85 +39,73 @@ interface Driver {
 export default function DriversManagementPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | Driver["status"]>("all");
+  const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock data - À remplacer par appel API
-  const drivers: Driver[] = [
-    {
-      id: "DRV001",
-      name: "Jean Dupont",
-      phone: "+237 699 12 34 56",
-      vehicleType: "Camion",
-      vehiclePlate: "LT-1234-CM",
-      city: "Yaoundé",
-      region: "Centre",
-      status: "ACTIVE",
-      rating: 4.8,
-      totalDeliveries: 156,
-      completedToday: 8,
-      earnings: 45000,
-      joinedDate: "2023-06-15",
-    },
-    {
-      id: "DRV002",
-      name: "Marie Kamga",
-      phone: "+237 677 98 76 54",
-      vehicleType: "Moto",
-      vehiclePlate: "LT-5678-CM",
-      city: "Douala",
-      region: "Littoral",
-      status: "BUSY",
-      rating: 4.9,
-      totalDeliveries: 234,
-      completedToday: 12,
-      earnings: 38000,
-      joinedDate: "2023-04-20",
-    },
-    {
-      id: "DRV003",
-      name: "Paul Njiki",
-      phone: "+237 655 11 22 33",
-      vehicleType: "Voiture",
-      vehiclePlate: "LT-9012-CM",
-      city: "Bafoussam",
-      region: "Ouest",
-      status: "OFFLINE",
-      rating: 4.5,
-      totalDeliveries: 89,
-      completedToday: 0,
-      earnings: 0,
-      joinedDate: "2023-08-10",
-    },
-    {
-      id: "DRV004",
-      name: "Alice Nkomo",
-      phone: "+237 688 44 55 66",
-      vehicleType: "Tricycle",
-      vehiclePlate: "LT-3456-CM",
-      city: "Yaoundé",
-      region: "Centre",
-      status: "ACTIVE",
-      rating: 4.7,
-      totalDeliveries: 145,
-      completedToday: 6,
-      earnings: 28500,
-      joinedDate: "2023-07-01",
-    },
-    {
-      id: "DRV005",
-      name: "Thomas Biya",
-      phone: "+237 699 77 88 99",
-      vehicleType: "Moto",
-      vehiclePlate: "LT-7890-CM",
-      city: "Douala",
-      region: "Littoral",
-      status: "BUSY",
-      rating: 4.6,
-      totalDeliveries: 178,
-      completedToday: 9,
-      earnings: 42000,
-      joinedDate: "2023-05-15",
-    },
-  ];
+  // Fetch drivers from API
+  useEffect(() => {
+    const fetchDrivers = async () => {
+      try {
+        setLoading(true);
+
+        // Fetch all deliveries to extract driver info
+        const allDeliveries = await api.getAllDeliveries();
+        const driverMap = new Map<string, any>();
+
+        // Extract unique drivers from deliveries
+        allDeliveries.forEach((delivery: any) => {
+          if (delivery.driverId && !driverMap.has(delivery.driverId)) {
+            driverMap.set(delivery.driverId, {
+              id: delivery.driverId,
+              deliveries: [],
+            });
+          }
+          if (delivery.driverId) {
+            driverMap.get(delivery.driverId)!.deliveries.push(delivery);
+          }
+        });
+
+        // Convert to Driver objects
+        const driversData: Driver[] = Array.from(driverMap.entries()).map(
+          ([driverId, data], index) => {
+            const deliveries = data.deliveries;
+            const hasActive = deliveries.some(
+              (d: any) => ["ACCEPTED", "PICKED_UP", "IN_TRANSIT"].includes(d.status)
+            );
+            const completedToday = deliveries.filter(
+              (d: any) =>
+                d.status === "DELIVERED" &&
+                new Date(d.deliveredAt).toDateString() === new Date().toDateString()
+            );
+
+            return {
+              id: driverId,
+              name: driverId,
+              phone: "N/A",
+              vehicleType: "Véhicule",
+              vehiclePlate: "N/A",
+              city: deliveries[0]?.senderCity || "N/A",
+              region: deliveries[0]?.senderRegion || "N/A",
+              status: hasActive ? "BUSY" : "ACTIVE",
+              rating: 4.5,
+              totalDeliveries: deliveries.length,
+              completedToday: completedToday.length,
+              earnings: completedToday.reduce((sum: number, d: any) => sum + (d.price || 0), 0),
+              joinedDate: new Date().toISOString().split("T")[0],
+            };
+          }
+        );
+
+        setDrivers(driversData);
+      } catch (error) {
+        console.error("Erreur lors du chargement des livreurs:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDrivers();
+  }, []);
 
   const filteredDrivers = drivers.filter((driver) => {
     const matchesStatus = statusFilter === "all" || driver.status === statusFilter;
@@ -219,7 +208,12 @@ export default function DriversManagementPage() {
 
         {/* Drivers List */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {filteredDrivers.length > 0 ? (
+          {loading ? (
+            <div className="col-span-2 card text-center py-12">
+              <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-text-muted">Chargement des livreurs...</p>
+            </div>
+          ) : filteredDrivers.length > 0 ? (
             filteredDrivers.map((driver) => (
               <DriverCard key={driver.id} driver={driver} />
             ))

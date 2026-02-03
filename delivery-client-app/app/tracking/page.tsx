@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { Search, QrCode, Package, MapPin, Clock, User, ArrowLeft } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
@@ -8,7 +8,7 @@ import Link from "next/link";
 
 export const dynamic = 'force-dynamic';
 
-export default function TrackingPage() {
+function TrackingContent() {
   const searchParams = useSearchParams();
   const codeFromUrl = searchParams.get("code") || "";
 
@@ -247,6 +247,18 @@ export default function TrackingPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function TrackingPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-text-muted">Chargement...</div>
+      </div>
+    }>
+      <TrackingContent />
+    </Suspense>
   );
 }
 

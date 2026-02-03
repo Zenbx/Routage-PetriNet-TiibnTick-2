@@ -136,7 +136,14 @@ export default function DepositPage() {
           {currentStep === 1 && <SenderStep onNext={nextStep} />}
           {currentStep === 2 && <RecipientStep onNext={nextStep} onBack={prevStep} />}
           {currentStep === 3 && <PackageStep onNext={nextStep} onBack={prevStep} />}
-          {currentStep === 4 && <TrajetStep onNext={nextStep} onBack={prevStep} />}
+          {currentStep === 4 && (
+            <TrajetStep
+              onNext={nextStep}
+              onBack={prevStep}
+              senderData={formData.sender}
+              recipientData={formData.recipient}
+            />
+          )}
           {currentStep === 5 && <SignatureStep onNext={nextStep} onBack={prevStep} />}
           {currentStep === 6 && <PaiementStep onNext={nextStep} onBack={prevStep} />}
         </div>

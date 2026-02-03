@@ -6,9 +6,11 @@ import { Route, MapPin, Clock, Calendar } from "lucide-react";
 interface TrajetStepProps {
   onNext: (data: any) => void;
   onBack: () => void;
+  senderData?: any;
+  recipientData?: any;
 }
 
-export function TrajetStep({ onNext, onBack }: TrajetStepProps) {
+export function TrajetStep({ onNext, onBack, senderData, recipientData }: TrajetStepProps) {
   const [formData, setFormData] = useState({
     preferredDate: "",
     preferredTime: "morning",
@@ -52,7 +54,10 @@ export function TrajetStep({ onNext, onBack }: TrajetStepProps) {
                 <div className="w-3 h-3 rounded-full bg-primary mt-1.5" />
                 <div>
                   <p className="text-sm text-text-muted">Point de départ</p>
-                  <p className="font-medium">Yaoundé, Cameroun</p>
+                  <p className="font-medium">
+                    {senderData?.city || "..."}, {senderData?.region || "..."}
+                  </p>
+                  <p className="text-xs text-text-muted">{senderData?.address || "..."}</p>
                 </div>
               </div>
               <div className="ml-1.5 border-l-2 border-dashed border-primary/30 h-8" />
@@ -60,18 +65,21 @@ export function TrajetStep({ onNext, onBack }: TrajetStepProps) {
                 <div className="w-3 h-3 rounded-full bg-green-500 mt-1.5" />
                 <div>
                   <p className="text-sm text-text-muted">Destination</p>
-                  <p className="font-medium">Douala, Cameroun</p>
+                  <p className="font-medium">
+                    {recipientData?.city || "..."}, {recipientData?.region || "..."}
+                  </p>
+                  <p className="text-xs text-text-muted">{recipientData?.address || "..."}</p>
                 </div>
               </div>
             </div>
             <div className="mt-4 pt-4 border-t border-border grid grid-cols-2 gap-4 text-sm">
               <div>
                 <p className="text-text-muted">Distance estimée</p>
-                <p className="font-bold text-primary">~250 km</p>
+                <p className="font-bold text-primary">En cours de calcul...</p>
               </div>
               <div>
                 <p className="text-text-muted">Durée estimée</p>
-                <p className="font-bold text-primary">4-5 heures</p>
+                <p className="font-bold text-primary">En cours de calcul...</p>
               </div>
             </div>
           </div>

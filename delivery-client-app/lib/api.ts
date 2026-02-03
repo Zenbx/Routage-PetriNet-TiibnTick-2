@@ -173,20 +173,20 @@ class DeliveryAPI {
   // ===== DELIVERIES =====
 
   async createDelivery(data: DeliveryRequest): Promise<DeliveryResponse> {
-    return this.request<DeliveryResponse>("/deliveries", {
+    return this.request<DeliveryResponse>("/v1/client/delivery/request", {
       method: "POST",
       body: JSON.stringify(data),
     });
   }
 
   async getDelivery(id: string): Promise<any> {
-    return this.request<any>(`/deliveries/${id}`, {
+    return this.request<any>(`/v1/delivery/${id}`, {
       method: "GET",
     });
   }
 
   async trackDelivery(trackingCode: string): Promise<TrackingResponse> {
-    return this.request<TrackingResponse>(`/tracking/${trackingCode}`, {
+    return this.request<TrackingResponse>(`/v1/client/tracking/${trackingCode}`, {
       method: "GET",
     });
   }
@@ -196,16 +196,15 @@ class DeliveryAPI {
     status: string,
     location?: Location
   ): Promise<any> {
-    return this.request<any>(`/deliveries/${deliveryId}/status`, {
-      method: "PUT",
-      body: JSON.stringify({ status, location }),
+    return this.request<any>(`/v1/delivery/${deliveryId}/state-transition`, {
+      method: "POST",
+      body: JSON.stringify({ event: status, location }),
     });
   }
 
   async assignDriver(deliveryId: string, driverId: string): Promise<any> {
-    return this.request<any>(`/deliveries/${deliveryId}/assign`, {
+    return this.request<any>(`/v1/delivery-driver/delivery/${deliveryId}/accept?driverId=${driverId}`, {
       method: "POST",
-      body: JSON.stringify({ driverId }),
     });
   }
 
@@ -222,7 +221,7 @@ class DeliveryAPI {
       });
     }
     const query = params.toString();
-    return this.request<any[]>(`/deliveries${query ? `?${query}` : ""}`, {
+    return this.request<any[]>(`/v1/delivery${query ? `?${query}` : ""}`, {
       method: "GET",
     });
   }

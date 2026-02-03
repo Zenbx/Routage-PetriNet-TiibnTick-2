@@ -6,6 +6,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import Link from "next/link";
 
+export const dynamic = 'force-dynamic';
+
 export default function TrackingPage() {
   const searchParams = useSearchParams();
   const codeFromUrl = searchParams.get("code") || "";

@@ -9,49 +9,29 @@ export interface Location {
 }
 
 export interface DeliveryRequest {
-  // Sender
-  senderName: string;
-  senderPhone: string;
-  senderEmail?: string;
-  senderAddress: string;
-  senderCity: string;
-  senderRegion: string;
-  senderCountry: string;
-  senderLandmark?: string;
-
-  // Recipient
-  recipientName: string;
-  recipientPhone: string;
-  recipientEmail?: string;
-  recipientAddress: string;
-  recipientCity: string;
-  recipientRegion: string;
-  recipientCountry: string;
-  recipientLandmark?: string;
-
-  // Package
-  packageDescription: string;
-  packageWeight: number;
-  packageLength?: number;
-  packageWidth?: number;
-  packageHeight?: number;
-  isFragile: boolean;
-  isPerishable: boolean;
-  isLiquid: boolean;
-  isInsured: boolean;
-
-  // Route
-  transportMode: string;
-  homePickup: boolean;
-  homeDelivery: boolean;
-  expressDelivery: string;
-  preferredDate?: string;
-  preferredTimeSlot?: string;
+  sender: {
+    name: string;
+    phone: string;
+    address: string;
+    pickupType: "HOME" | "RELAY_POINT";
+    pickupLocationId: string;
+  };
+  recipient: {
+    name: string;
+    phone: string;
+    address: string;
+    deliveryType: "HOME" | "RELAY_POINT";
+    deliveryLocationId: string;
+  };
+  package_: {
+    description: string;
+    weight: number;
+    length?: number;
+    width?: number;
+    height?: number;
+  };
+  preferredDeadline?: string;
   specialInstructions?: string;
-
-  // Payment
-  price: number;
-  paymentMethod: string;
 }
 
 export interface DeliveryResponse {

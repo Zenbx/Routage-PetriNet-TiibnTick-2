@@ -1,6 +1,7 @@
 package com.delivery.optimization.dto;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -31,8 +32,9 @@ public class DeliveryRequestDTO {
 
     @NotNull(message = "Les informations du colis sont obligatoires")
     @Valid
-    @JsonAlias({"package", "package_"})
-    private PackageInfoDTO package_;
+    @JsonProperty("package_")
+    @JsonAlias({"package"})
+    private PackageInfoDTO packageInfo;
 
     /**
      * Date limite de livraison souhaitée (optionnelle)

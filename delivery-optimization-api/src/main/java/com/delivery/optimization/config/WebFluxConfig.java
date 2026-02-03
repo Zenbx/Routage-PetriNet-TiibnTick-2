@@ -21,6 +21,7 @@ public class WebFluxConfig implements WebFluxConfigurer {
                 .allowedOriginPatterns(
                     "http://localhost:3000",
                     "http://127.0.0.1:3000",
+                    "https://tiibntick-frontend-routage.vercel.app",  // Vercel production URL
                     frontendUrl  // Railway production URL from environment variable
                 )
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")

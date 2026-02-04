@@ -179,7 +179,8 @@ export function DeliveryMap({
 
     // Fit map to bounds
     if (bounds.length > 0) {
-      map.fitBounds(bounds, { padding: [50, 50] });
+      const latLngBounds = L.latLngBounds(bounds as L.LatLngTuple[]);
+      map.fitBounds(latLngBounds, { padding: [50, 50] });
     }
 
     return () => {

@@ -36,14 +36,39 @@ public class DeliveryController {
     @GetMapping
     @Operation(
         summary = "Récupérer toutes les livraisons",
-        description = "Retourne la liste complète de toutes les livraisons avec leurs informations (statut, client, position, etc.)"
+        description = "Retourne la liste complète de toutes les livraisons avec filtres optionnels (statut, driverId)"
     )
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Liste des livraisons récupérée avec succès",
                      content = @Content(schema = @Schema(implementation = Delivery.class)))
     })
-    public Flux<Delivery> getAllDeliveries() {
-        return deliveryRepository.findAll();
+    public Flux<Delivery> getAllDeliveries(
+            @Parameter(description = "Filtrer par statut (ex: PENDING, ACCEPTED). Supporte plusieurs valeurs séparées par virgule")
+            @RequestParam(required = false) String status,
+            @Parameter(description = "Filtrer par ID du livreur")
+            @RequestParam(required = false) String driverId
+    ) {
+        Flux<Delivery> deliveries = deliveryRepository.findAll();
+
+        // Filtrer par driver ID si fourni
+        if (driverId != null && !driverId.isEmpty()) {
+            deliveries = deliveries.filter(d -> driverId.equals(d.getDriverId()));
+        }
+
+        // Filtrer par statut si fourni
+        if (status != null && !status.isEmpty()) {
+            String[] statuses = status.split(",");
+            deliveries = deliveries.filter(d -> {
+                for (String s : statuses) {
+                    if (d.getStatus().name().equals(s.trim())) {
+                        return true;
+                    }
+                }
+                return false;
+            });
+        }
+
+        return deliveries;
     }
 
     @GetMapping("/{id}")

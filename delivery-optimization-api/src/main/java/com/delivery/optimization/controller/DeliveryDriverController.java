@@ -45,10 +45,7 @@ public class DeliveryDriverController {
      * Les livreurs voient toutes les livraisons en attente d'acceptation
      */
     @GetMapping("/feed")
-    @Operation(
-        summary = "Feed des livraisons disponibles",
-        description = "Retourne toutes les livraisons avec le statut PENDING (en attente d'un livreur)"
-    )
+    @Operation(summary = "Feed des livraisons disponibles", description = "Retourne toutes les livraisons avec le statut PENDING (en attente d'un livreur)")
     public Flux<DeliveryResponseDTO> getAvailableDeliveries() {
         log.info("Fetching available deliveries feed");
 
@@ -63,30 +60,22 @@ public class DeliveryDriverController {
      * Le livreur accepte une livraison du feed → passe à ACCEPTED
      */
     @PostMapping("/delivery/{deliveryId}/accept")
-    @Operation(
-        summary = "Accepter une livraison",
-        description = "Le livreur accepte une livraison. Change le statut de PENDING → ACCEPTED et assigne le livreur."
-    )
+    @Operation(summary = "Accepter une livraison", description = "Le livreur accepte une livraison. Change le statut de PENDING → ACCEPTED et assigne le livreur.")
     public Mono<DeliveryResponseDTO> acceptDelivery(
-            @Parameter(description = "ID de la livraison")
-            @PathVariable String deliveryId,
-            @Parameter(description = "ID du livreur")
-            @RequestParam String driverId
-    ) {
+            @Parameter(description = "ID de la livraison") @PathVariable String deliveryId,
+            @Parameter(description = "ID du livreur") @RequestParam String driverId) {
         log.info("Driver {} accepting delivery {}", driverId, deliveryId);
 
         return deliveryRepository.findById(deliveryId)
                 .switchIfEmpty(Mono.error(new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
-                        "Livraison introuvable"
-                )))
+                        "Livraison introuvable")))
                 .flatMap(delivery -> {
                     // Vérifier que la livraison est bien PENDING
                     if (delivery.getStatus() != Delivery.DeliveryStatus.PENDING) {
                         return Mono.error(new ResponseStatusException(
                                 HttpStatus.CONFLICT,
-                                "Cette livraison n'est plus disponible (statut: " + delivery.getStatus() + ")"
-                        ));
+                                "Cette livraison n'est plus disponible (statut: " + delivery.getStatus() + ")"));
                     }
 
                     // Assigner le livreur et changer le statut
@@ -110,11 +99,11 @@ public class DeliveryDriverController {
                     return stateTransitionService.transitionState(
                             delivery.getId(),
                             "ACCEPTED",
-                            Instant.now()
-                    ).thenReturn(delivery);
+                            Instant.now()).thenReturn(delivery);
                 })
                 .map(this::mapToResponseDTO)
-                .doOnSuccess(response -> log.info("Driver {} accepted delivery {} and status changed to BUSY", driverId, deliveryId))
+                .doOnSuccess(response -> log.info("Driver {} accepted delivery {} and status changed to BUSY", driverId,
+                        deliveryId))
                 .doOnError(error -> log.error("Failed to accept delivery: {}", error.getMessage()));
     }
 
@@ -123,38 +112,29 @@ public class DeliveryDriverController {
      * Le livreur a récupéré le colis → passe à PICKED_UP
      */
     @PostMapping("/delivery/{deliveryId}/pickup")
-    @Operation(
-        summary = "Marquer comme récupéré",
-        description = "Le livreur confirme avoir récupéré le colis. Change le statut ACCEPTED → PICKED_UP."
-    )
+    @Operation(summary = "Marquer comme récupéré", description = "Le livreur confirme avoir récupéré le colis. Change le statut ACCEPTED → PICKED_UP.")
     public Mono<DeliveryResponseDTO> markAsPickedUp(
-            @Parameter(description = "ID de la livraison")
-            @PathVariable String deliveryId,
-            @Parameter(description = "ID du livreur (vérification)")
-            @RequestParam String driverId
-    ) {
+            @Parameter(description = "ID de la livraison") @PathVariable String deliveryId,
+            @Parameter(description = "ID du livreur (vérification)") @RequestParam String driverId) {
         log.info("Driver {} marking delivery {} as picked up", driverId, deliveryId);
 
         return deliveryRepository.findById(deliveryId)
                 .switchIfEmpty(Mono.error(new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
-                        "Livraison introuvable"
-                )))
+                        "Livraison introuvable")))
                 .flatMap(delivery -> {
                     // Vérifier que c'est bien le livreur assigné
                     if (!driverId.equals(delivery.getDriverId())) {
                         return Mono.error(new ResponseStatusException(
                                 HttpStatus.FORBIDDEN,
-                                "Vous n'êtes pas le livreur assigné à cette livraison"
-                        ));
+                                "Vous n'êtes pas le livreur assigné à cette livraison"));
                     }
 
                     // Vérifier le statut
                     if (delivery.getStatus() != Delivery.DeliveryStatus.ACCEPTED) {
                         return Mono.error(new ResponseStatusException(
                                 HttpStatus.CONFLICT,
-                                "Impossible de récupérer une livraison avec le statut: " + delivery.getStatus()
-                        ));
+                                "Impossible de récupérer une livraison avec le statut: " + delivery.getStatus()));
                     }
 
                     delivery.setStatus(Delivery.DeliveryStatus.PICKED_UP);
@@ -167,8 +147,7 @@ public class DeliveryDriverController {
                     return stateTransitionService.transitionState(
                             delivery.getId(),
                             "PICKED_UP",
-                            Instant.now()
-                    ).thenReturn(delivery);
+                            Instant.now()).thenReturn(delivery);
                 })
                 .map(this::mapToResponseDTO)
                 .doOnSuccess(response -> log.info("Delivery {} marked as picked up", deliveryId))
@@ -180,36 +159,27 @@ public class DeliveryDriverController {
      * Le livreur démarre le trajet → passe à IN_TRANSIT
      */
     @PostMapping("/delivery/{deliveryId}/start")
-    @Operation(
-        summary = "Démarrer la livraison",
-        description = "Le livreur démarre le trajet vers la destination. Change le statut PICKED_UP → IN_TRANSIT."
-    )
+    @Operation(summary = "Démarrer la livraison", description = "Le livreur démarre le trajet vers la destination. Change le statut PICKED_UP → IN_TRANSIT.")
     public Mono<DeliveryResponseDTO> startDelivery(
-            @Parameter(description = "ID de la livraison")
-            @PathVariable String deliveryId,
-            @Parameter(description = "ID du livreur (vérification)")
-            @RequestParam String driverId
-    ) {
+            @Parameter(description = "ID de la livraison") @PathVariable String deliveryId,
+            @Parameter(description = "ID du livreur (vérification)") @RequestParam String driverId) {
         log.info("Driver {} starting delivery {}", driverId, deliveryId);
 
         return deliveryRepository.findById(deliveryId)
                 .switchIfEmpty(Mono.error(new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
-                        "Livraison introuvable"
-                )))
+                        "Livraison introuvable")))
                 .flatMap(delivery -> {
                     if (!driverId.equals(delivery.getDriverId())) {
                         return Mono.error(new ResponseStatusException(
                                 HttpStatus.FORBIDDEN,
-                                "Vous n'êtes pas le livreur assigné"
-                        ));
+                                "Vous n'êtes pas le livreur assigné"));
                     }
 
                     if (delivery.getStatus() != Delivery.DeliveryStatus.PICKED_UP) {
                         return Mono.error(new ResponseStatusException(
                                 HttpStatus.CONFLICT,
-                                "Impossible de démarrer depuis le statut: " + delivery.getStatus()
-                        ));
+                                "Impossible de démarrer depuis le statut: " + delivery.getStatus()));
                     }
 
                     delivery.setStatus(Delivery.DeliveryStatus.IN_TRANSIT);
@@ -219,8 +189,7 @@ public class DeliveryDriverController {
                     return stateTransitionService.transitionState(
                             delivery.getId(),
                             "IN_TRANSIT",
-                            Instant.now()
-                    ).thenReturn(delivery);
+                            Instant.now()).thenReturn(delivery);
                 })
                 .map(this::mapToResponseDTO)
                 .doOnSuccess(response -> log.info("Delivery {} started", deliveryId))
@@ -232,36 +201,27 @@ public class DeliveryDriverController {
      * Le livreur a livré le colis → passe à DELIVERED
      */
     @PostMapping("/delivery/{deliveryId}/deliver")
-    @Operation(
-        summary = "Marquer comme livré",
-        description = "Le livreur confirme avoir livré le colis. Change le statut IN_TRANSIT → DELIVERED."
-    )
+    @Operation(summary = "Marquer comme livré", description = "Le livreur confirme avoir livré le colis. Change le statut IN_TRANSIT → DELIVERED.")
     public Mono<Map<String, Object>> markAsDelivered(
-            @Parameter(description = "ID de la livraison")
-            @PathVariable String deliveryId,
-            @Parameter(description = "ID du livreur (vérification)")
-            @RequestParam String driverId
-    ) {
+            @Parameter(description = "ID de la livraison") @PathVariable String deliveryId,
+            @Parameter(description = "ID du livreur (vérification)") @RequestParam String driverId) {
         log.info("Driver {} marking delivery {} as delivered", driverId, deliveryId);
 
         return deliveryRepository.findById(deliveryId)
                 .switchIfEmpty(Mono.error(new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
-                        "Livraison introuvable"
-                )))
+                        "Livraison introuvable")))
                 .flatMap(delivery -> {
                     if (!driverId.equals(delivery.getDriverId())) {
                         return Mono.error(new ResponseStatusException(
                                 HttpStatus.FORBIDDEN,
-                                "Vous n'êtes pas le livreur assigné"
-                        ));
+                                "Vous n'êtes pas le livreur assigné"));
                     }
 
                     if (delivery.getStatus() != Delivery.DeliveryStatus.IN_TRANSIT) {
                         return Mono.error(new ResponseStatusException(
                                 HttpStatus.CONFLICT,
-                                "Impossible de livrer depuis le statut: " + delivery.getStatus()
-                        ));
+                                "Impossible de livrer depuis le statut: " + delivery.getStatus()));
                     }
 
                     delivery.setStatus(Delivery.DeliveryStatus.DELIVERED);
@@ -282,8 +242,7 @@ public class DeliveryDriverController {
                     return stateTransitionService.transitionState(
                             delivery.getId(),
                             "DELIVERED",
-                            Instant.now()
-                    ).thenReturn(delivery);
+                            Instant.now()).thenReturn(delivery);
                 })
                 .map(delivery -> {
                     Map<String, Object> response = new java.util.HashMap<>();
@@ -294,7 +253,8 @@ public class DeliveryDriverController {
                     response.put("message", "Livraison terminée avec succès");
                     return response;
                 })
-                .doOnSuccess(response -> log.info("Delivery {} marked as delivered, driver {} status changed to AVAILABLE", deliveryId, driverId))
+                .doOnSuccess(response -> log.info(
+                        "Delivery {} marked as delivered, driver {} status changed to AVAILABLE", deliveryId, driverId))
                 .doOnError(error -> log.error("Failed to mark as delivered: {}", error.getMessage()));
     }
 
@@ -303,14 +263,9 @@ public class DeliveryDriverController {
      * Toutes les livraisons assignées mais pas encore livrées
      */
     @GetMapping("/deliveries")
-    @Operation(
-        summary = "Livraisons actives du livreur",
-        description = "Retourne toutes les livraisons actives (ACCEPTED, PICKED_UP, IN_TRANSIT) d'un livreur"
-    )
+    @Operation(summary = "Livraisons actives du livreur", description = "Retourne toutes les livraisons actives (ACCEPTED, PICKED_UP, IN_TRANSIT) d'un livreur")
     public Flux<DeliveryResponseDTO> getDriverDeliveries(
-            @Parameter(description = "ID du livreur")
-            @RequestParam String driverId
-    ) {
+            @Parameter(description = "ID du livreur") @RequestParam String driverId) {
         log.info("Fetching active deliveries for driver {}", driverId);
 
         return deliveryRepository.findByDriverId(driverId)
@@ -326,21 +281,15 @@ public class DeliveryDriverController {
      * Utilisé pour la navigation et l'affichage de la carte
      */
     @GetMapping("/delivery/{id}/details")
-    @Operation(
-        summary = "Détails complets d'une livraison",
-        description = "Retourne tous les détails d'une livraison incluant les coordonnées GPS pour la navigation"
-    )
+    @Operation(summary = "Détails complets d'une livraison", description = "Retourne tous les détails d'une livraison incluant les coordonnées GPS pour la navigation")
     public Mono<DeliveryDetailsDTO> getDeliveryDetails(
-            @Parameter(description = "ID de la livraison")
-            @PathVariable String id
-    ) {
+            @Parameter(description = "ID de la livraison") @PathVariable String id) {
         log.info("Fetching delivery details for {}", id);
 
         return deliveryRepository.findById(id)
                 .switchIfEmpty(Mono.error(new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
-                        "Livraison non trouvée"
-                )))
+                        "Livraison non trouvée")))
                 .map(this::mapToDetailsDTO)
                 .doOnSuccess(details -> log.info("Retrieved details for delivery {}", id))
                 .doOnError(error -> log.error("Failed to fetch delivery details: {}", error.getMessage()));
@@ -428,12 +377,15 @@ public class DeliveryDriverController {
      * Parse une chaîne de coordonnées au format "lat,lng" en LocationDTO
      */
     private LocationDTO parseLocation(String locationId, String address) {
-        if (locationId == null || locationId.isEmpty()) {
+        // Vérifier que locationId n'est pas null ou vide
+        if (locationId == null || locationId.trim().isEmpty()) {
+            log.debug("Location ID is null or empty, returning null");
             return null;
         }
 
         // Si c'est un point relais, on n'a pas les coordonnées pour l'instant
-        if (locationId.startsWith("RELAY_")) {
+        if (locationId.startsWith("RELAY_") || locationId.contains("_HOME")) {
+            log.debug("Location ID is a RELAY or HOME reference: {}, returning null", locationId);
             return null;
         }
 
@@ -443,14 +395,25 @@ public class DeliveryDriverController {
             if (parts.length == 2) {
                 double latitude = Double.parseDouble(parts[0].trim());
                 double longitude = Double.parseDouble(parts[1].trim());
+
+                // Valider les coordonnées GPS
+                if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+                    log.warn("Invalid GPS coordinates: lat={}, lng={}", latitude, longitude);
+                    return null;
+                }
+
                 return LocationDTO.builder()
                         .latitude(latitude)
                         .longitude(longitude)
                         .address(address)
                         .build();
+            } else {
+                log.warn("Location ID does not match 'lat,lng' format: {}", locationId);
             }
         } catch (NumberFormatException e) {
-            log.warn("Failed to parse location coordinates: {}", locationId);
+            log.warn("Failed to parse location coordinates from '{}': {}", locationId, e.getMessage());
+        } catch (Exception e) {
+            log.error("Unexpected error parsing location '{}': {}", locationId, e.getMessage());
         }
 
         return null;

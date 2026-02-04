@@ -291,6 +291,17 @@ export default function DeliveryDetailsPage() {
           Ouvrir Google Maps
         </button>
 
+        {/* Deposit at Hub Button - visible when package is picked up */}
+        {(currentStatus === "PICKED_UP" || currentStatus === "IN_TRANSIT") && (
+          <Link
+            href={`/driver/deposit/${deliveryId}`}
+            className="btn-secondary w-full flex items-center justify-center gap-2 text-lg py-4 border-2 border-primary/50 hover:border-primary hover:bg-primary/10 transition-all"
+          >
+            <MapPin className="w-6 h-6" />
+            Déposer au Hub
+          </Link>
+        )}
+
         {/* Route Summary */}
         <div className="card">
           <h2 className="font-bold text-lg mb-4">Itinéraire</h2>
@@ -485,13 +496,12 @@ function StatusButton({
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`px-4 py-3 rounded-xl font-medium text-sm transition-all ${
-        completed
+      className={`px-4 py-3 rounded-xl font-medium text-sm transition-all ${completed
           ? "bg-green-500 text-white"
           : active
-          ? "bg-primary text-white"
-          : "bg-background-light text-text-muted hover:bg-background-card"
-      } ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+            ? "bg-primary text-white"
+            : "bg-background-light text-text-muted hover:bg-background-card"
+        } ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
     >
       {completed && <CheckCircle className="w-4 h-4 inline mr-1" />}
       {label}

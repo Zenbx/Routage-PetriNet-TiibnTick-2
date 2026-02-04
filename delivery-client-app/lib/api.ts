@@ -343,6 +343,42 @@ class DeliveryAPI {
     });
   }
 
+  // ===== HUB DEPOSITS =====
+
+  async getNearbyHubs(lat: number, lng: number, radiusKm?: number): Promise<any[]> {
+    const radius = radiusKm || 10.0;
+    return this.request<any[]>(`/hub/nearby?lat=${lat}&lng=${lng}&radiusKm=${radius}`, {
+      method: "GET",
+    });
+  }
+
+  async depositAtHub(request: {
+    deliveryId: string;
+    hubNodeId: string;
+    driverId: string;
+    notes?: string;
+    storageLocation?: string;
+    depositProof?: string;
+  }): Promise<any> {
+    return this.request<any>("/hub/deposit", {
+      method: "POST",
+      body: JSON.stringify(request),
+    });
+  }
+
+  async getHubDeposits(hubId: string, status?: string): Promise<any[]> {
+    const statusParam = status ? `?status=${status}` : "";
+    return this.request<any[]>(`/hub/${hubId}/deposits${statusParam}`, {
+      method: "GET",
+    });
+  }
+
+  async getDepositByDeliveryId(deliveryId: string): Promise<any> {
+    return this.request<any>(`/hub/deposit/delivery/${deliveryId}`, {
+      method: "GET",
+    });
+  }
+
   // ===== GRAPH / NETWORK =====
 
   async getDeliveryGraph(filters?: { region?: string }): Promise<any> {

@@ -5,10 +5,10 @@ import { Search, QrCode, Package, MapPin, Clock, User, ArrowLeft } from "lucide-
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import Link from "next/link";
-import dynamic from "next/dynamic";
+import loadDynamic from "next/dynamic";
 
 // Dynamically import map component (client-side only)
-const DeliveryMap = dynamic(
+const DeliveryMap = loadDynamic(
   () => import("@/components/map/DeliveryMap").then((mod) => mod.DeliveryMap),
   { ssr: false }
 );
@@ -316,17 +316,15 @@ function TimelineItem({
     <div className="flex gap-4">
       <div className="flex flex-col items-center">
         <div
-          className={`w-4 h-4 rounded-full border-2 ${
-            isCompleted
+          className={`w-4 h-4 rounded-full border-2 ${isCompleted
               ? "bg-primary border-primary"
               : "bg-background border-border"
-          }`}
+            }`}
         />
         {!isLast && (
           <div
-            className={`w-0.5 h-12 ${
-              isCompleted ? "bg-primary" : "bg-border"
-            }`}
+            className={`w-0.5 h-12 ${isCompleted ? "bg-primary" : "bg-border"
+              }`}
           />
         )}
       </div>

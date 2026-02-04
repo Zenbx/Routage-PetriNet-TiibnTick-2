@@ -379,6 +379,57 @@ class DeliveryAPI {
     });
   }
 
+  async checkParcelAtHub(trackingCode: string): Promise<any> {
+    return this.request<any>(`/hub/check/${trackingCode}`, {
+      method: "GET",
+    });
+  }
+
+  async pickupFromHub(request: {
+    trackingCode: string;
+    pickupPhone: string;
+    pickupName: string;
+    pickupProof?: string;
+    hubId?: string;
+  }): Promise<any> {
+    return this.request<any>("/hub/pickup", {
+      method: "POST",
+      body: JSON.stringify(request),
+    });
+  }
+
+  // ===== NOTIFICATIONS =====
+
+  async getNotificationsByTrackingCode(trackingCode: string): Promise<any[]> {
+    return this.request<any[]>(`/notifications/tracking/${trackingCode}`, {
+      method: "GET",
+    });
+  }
+
+  async getUnreadNotifications(phone: string): Promise<any[]> {
+    return this.request<any[]>(`/notifications/unread?phone=${encodeURIComponent(phone)}`, {
+      method: "GET",
+    });
+  }
+
+  async countUnreadNotifications(phone: string): Promise<number> {
+    return this.request<number>(`/notifications/unread/count?phone=${encodeURIComponent(phone)}`, {
+      method: "GET",
+    });
+  }
+
+  async markNotificationAsRead(notificationId: string): Promise<any> {
+    return this.request<any>(`/notifications/${notificationId}/read`, {
+      method: "PUT",
+    });
+  }
+
+  async markAllNotificationsAsRead(phone: string): Promise<void> {
+    return this.request<void>(`/notifications/read-all?phone=${encodeURIComponent(phone)}`, {
+      method: "PUT",
+    });
+  }
+
   // ===== GRAPH / NETWORK =====
 
   async getDeliveryGraph(filters?: { region?: string }): Promise<any> {

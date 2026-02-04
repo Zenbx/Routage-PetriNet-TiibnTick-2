@@ -22,5 +22,6 @@
     <include file="classpath:db/changelog/v1/014-seed-logistics-deliveries.sql" relativeToChangelogFile="false"/>
     <include file="classpath:db/changelog/v1/016-add-driver-auth-fields.sql" relativeToChangelogFile="false"/>
     <include file="classpath:db/changelog/v1/017-create-hub-deposits-table.sql" relativeToChangelogFile="false"/>
+    <include file="classpath:db/changelog/v1/018-create-notifications-table.sql" relativeToChangelogFile="false"/>
 
 </databaseChangeLog>

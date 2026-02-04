@@ -39,6 +39,7 @@ public class DeliveryDriverController {
     private final DeliveryRepository deliveryRepository;
     private final DriverRepository driverRepository;
     private final StateTransitionService stateTransitionService;
+    private final com.delivery.optimization.service.NotificationService notificationService;
 
     /**
      * Feed des livraisons disponibles (statut PENDING)
@@ -101,6 +102,14 @@ public class DeliveryDriverController {
                             "ACCEPTED",
                             Instant.now()).thenReturn(delivery);
                 })
+                .flatMap(delivery -> {
+                    // Envoyer notification au client
+                    return notificationService.notifyDriverAssigned(
+                            delivery.getId(),
+                            delivery.getTrackingCode(),
+                            delivery.getRecipientPhone(),
+                            "Votre livreur").thenReturn(delivery);
+                })
                 .map(this::mapToResponseDTO)
                 .doOnSuccess(response -> log.info("Driver {} accepted delivery {} and status changed to BUSY", driverId,
                         deliveryId))
@@ -148,6 +157,13 @@ public class DeliveryDriverController {
                             delivery.getId(),
                             "PICKED_UP",
                             Instant.now()).thenReturn(delivery);
+                })
+                .flatMap(delivery -> {
+                    // Notification: colis récupéré
+                    return notificationService.notifyPackagePickedUp(
+                            delivery.getId(),
+                            delivery.getTrackingCode(),
+                            delivery.getRecipientPhone()).thenReturn(delivery);
                 })
                 .map(this::mapToResponseDTO)
                 .doOnSuccess(response -> log.info("Delivery {} marked as picked up", deliveryId))
@@ -243,6 +259,13 @@ public class DeliveryDriverController {
                             delivery.getId(),
                             "DELIVERED",
                             Instant.now()).thenReturn(delivery);
+                })
+                .flatMap(delivery -> {
+                    // Notification: livraison terminée 🎉
+                    return notificationService.notifyDelivered(
+                            delivery.getId(),
+                            delivery.getTrackingCode(),
+                            delivery.getRecipientPhone()).thenReturn(delivery);
                 })
                 .map(delivery -> {
                     Map<String, Object> response = new java.util.HashMap<>();

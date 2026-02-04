@@ -28,7 +28,7 @@ public class DriverRegisterRequest {
     private String password;
 
     @NotBlank(message = "Le téléphone est obligatoire")
-    @Pattern(regexp = "^\\+?[0-9]{8,15}$", message = "Numéro de téléphone invalide")
+    @Pattern(regexp = "^\\+?[0-9\\s\\-\\.()]{8,20}$", message = "Numéro de téléphone invalide")
     private String phone;
 
     @NotBlank(message = "Le type de véhicule est obligatoire")

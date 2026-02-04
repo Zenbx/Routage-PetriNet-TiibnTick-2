@@ -78,24 +78,24 @@ export default function DriverDashboardPage() {
       setAvailableDeliveries(pending.map((d: any) => ({
         id: d.id,
         trackingCode: d.trackingCode,
-        senderCity: d.senderCity,
-        recipientCity: d.recipientCity,
+        senderCity: d.sender?.address?.split(',').pop()?.trim() || d.sender?.address || 'Non défini',
+        recipientCity: d.recipient?.address?.split(',').pop()?.trim() || d.recipient?.address || 'Non défini',
         distance: d.distance || 0,
-        price: d.price,
+        price: d.estimatedPrice || 0,
         pickupTime: "Dès que possible",
-        packageType: d.packageDescription,
+        packageType: d.package_?.description || 'Colis',
         status: "AVAILABLE" as const
       })));
 
       setActiveDeliveries(myDeliveries.map((d: any) => ({
         id: d.id,
         trackingCode: d.trackingCode,
-        senderCity: d.senderCity,
-        recipientCity: d.recipientCity,
+        senderCity: d.sender?.address?.split(',').pop()?.trim() || d.sender?.address || 'Non défini',
+        recipientCity: d.recipient?.address?.split(',').pop()?.trim() || d.recipient?.address || 'Non défini',
         distance: d.distance || 0,
-        price: d.price,
+        price: d.estimatedPrice || 0,
         pickupTime: d.status === "DELIVERED" ? "Terminé" : "En cours",
-        packageType: d.packageDescription,
+        packageType: d.package_?.description || 'Colis',
         status: d.status === "DELIVERED" ? "DELIVERED" : "IN_PROGRESS" as const
       })));
     } catch (error) {

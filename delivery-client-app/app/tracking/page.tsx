@@ -5,6 +5,13 @@ import { Search, QrCode, Package, MapPin, Clock, User, ArrowLeft } from "lucide-
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import Link from "next/link";
+import dynamic from "next/dynamic";
+
+// Dynamically import map component (client-side only)
+const DeliveryMap = dynamic(
+  () => import("@/components/map/DeliveryMap").then((mod) => mod.DeliveryMap),
+  { ssr: false }
+);
 
 export const dynamic = 'force-dynamic';
 
@@ -183,6 +190,38 @@ function TrackingContent() {
                 </div>
               </div>
             </div>
+
+            {/* Map */}
+            {(trackingInfo.pickupLocation || trackingInfo.deliveryLocation) && (
+              <div className="card">
+                <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+                  <MapPin className="w-5 h-5 text-primary" />
+                  Carte de suivi
+                </h3>
+                <DeliveryMap
+                  pickupLocation={trackingInfo.pickupLocation}
+                  deliveryLocation={trackingInfo.deliveryLocation}
+                  driverLocation={trackingInfo.driverLocation}
+                  className="h-[400px]"
+                />
+                <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                    <span className="text-text-muted">Récupération</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                    <span className="text-text-muted">Livraison</span>
+                  </div>
+                  {trackingInfo.driverLocation && (
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 bg-purple-500 rounded-full animate-pulse"></div>
+                      <span className="text-text-muted">Livreur</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Timeline */}
             <div className="card">

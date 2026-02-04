@@ -200,9 +200,46 @@ public class ClientController {
                 .packageDescription(delivery.getPackageDescription())
                 .weight(delivery.getWeight())
                 .estimatedDeliveryTime(delivery.getDeadline())
+                // Coordonnées GPS pour la carte
+                .pickupLocation(parseLocation(delivery.getPickupLocationId(), delivery.getSenderAddress()))
+                .deliveryLocation(parseLocation(delivery.getDeliveryLocationId(), delivery.getRecipientAddress()))
+                .driverLocation(null) // TODO: Position en temps réel via WebSocket
                 // TODO: Ajouter currentLocation et progressPercentage via GPS tracking
                 .currentLocation(null) // À implémenter avec WebSocket
                 .progressPercentage(null) // À calculer depuis position actuelle
                 .build();
+    }
+
+    /**
+     * Parse une chaîne de coordonnées au format "lat,lng" en LocationDTO
+     * Si le format est "RELAY_XXX", retourne null pour l'instant (à améliorer)
+     */
+    private LocationDTO parseLocation(String locationId, String address) {
+        if (locationId == null || locationId.isEmpty()) {
+            return null;
+        }
+
+        // Si c'est un point relais, on n'a pas les coordonnées pour l'instant
+        if (locationId.startsWith("RELAY_")) {
+            return null; // TODO: Récupérer coordonnées depuis base de données des relais
+        }
+
+        // Parser le format "lat,lng"
+        try {
+            String[] parts = locationId.split(",");
+            if (parts.length == 2) {
+                double latitude = Double.parseDouble(parts[0].trim());
+                double longitude = Double.parseDouble(parts[1].trim());
+                return LocationDTO.builder()
+                        .latitude(latitude)
+                        .longitude(longitude)
+                        .address(address)
+                        .build();
+            }
+        } catch (NumberFormatException e) {
+            log.warn("Failed to parse location coordinates: {}", locationId);
+        }
+
+        return null;
     }
 }

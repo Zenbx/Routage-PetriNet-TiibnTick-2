@@ -1,0 +1,200 @@
+"use client";
+
+import { useEffect, useRef } from "react";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import { MapPin, Package, Truck } from "lucide-react";
+
+// Fix Leaflet default icon issue with Next.js
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+});
+
+export interface Location {
+  latitude: number;
+  longitude: number;
+  address?: string;
+}
+
+interface DeliveryMapProps {
+  pickupLocation?: Location;
+  deliveryLocation?: Location;
+  driverLocation?: Location;
+  className?: string;
+}
+
+export function DeliveryMap({
+  pickupLocation,
+  deliveryLocation,
+  driverLocation,
+  className = "",
+}: DeliveryMapProps) {
+  const mapRef = useRef<L.Map | null>(null);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!mapContainerRef.current) return;
+
+    // Initialize map
+    if (!mapRef.current) {
+      mapRef.current = L.map(mapContainerRef.current, {
+        center: [3.8480, 11.5021], // Yaoundé, Cameroun (centre par défaut)
+        zoom: 13,
+        zoomControl: true,
+      });
+
+      // Add OpenStreetMap tiles
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 19,
+      }).addTo(mapRef.current);
+    }
+
+    const map = mapRef.current;
+
+    // Clear existing markers and polylines
+    map.eachLayer((layer) => {
+      if (layer instanceof L.Marker || layer instanceof L.Polyline) {
+        map.removeLayer(layer);
+      }
+    });
+
+    const bounds: L.LatLngExpression[] = [];
+
+    // Add pickup marker
+    if (pickupLocation) {
+      const pickupIcon = L.divIcon({
+        html: `
+          <div class="flex items-center justify-center w-10 h-10 bg-blue-500 rounded-full shadow-lg border-2 border-white">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+              <circle cx="12" cy="10" r="3"/>
+            </svg>
+          </div>
+        `,
+        className: "custom-marker",
+        iconSize: [40, 40],
+        iconAnchor: [20, 40],
+      });
+
+      const marker = L.marker([pickupLocation.latitude, pickupLocation.longitude], {
+        icon: pickupIcon,
+      }).addTo(map);
+
+      marker.bindPopup(`
+        <div class="p-2">
+          <div class="font-bold text-sm mb-1">📦 Point de récupération</div>
+          <div class="text-xs text-gray-600">${pickupLocation.address || "Adresse non disponible"}</div>
+        </div>
+      `);
+
+      bounds.push([pickupLocation.latitude, pickupLocation.longitude]);
+    }
+
+    // Add delivery marker
+    if (deliveryLocation) {
+      const deliveryIcon = L.divIcon({
+        html: `
+          <div class="flex items-center justify-center w-10 h-10 bg-green-500 rounded-full shadow-lg border-2 border-white">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+              <circle cx="12" cy="10" r="3"/>
+            </svg>
+          </div>
+        `,
+        className: "custom-marker",
+        iconSize: [40, 40],
+        iconAnchor: [20, 40],
+      });
+
+      const marker = L.marker([deliveryLocation.latitude, deliveryLocation.longitude], {
+        icon: deliveryIcon,
+      }).addTo(map);
+
+      marker.bindPopup(`
+        <div class="p-2">
+          <div class="font-bold text-sm mb-1">🏠 Point de livraison</div>
+          <div class="text-xs text-gray-600">${deliveryLocation.address || "Adresse non disponible"}</div>
+        </div>
+      `);
+
+      bounds.push([deliveryLocation.latitude, deliveryLocation.longitude]);
+    }
+
+    // Add driver marker
+    if (driverLocation) {
+      const driverIcon = L.divIcon({
+        html: `
+          <div class="flex items-center justify-center w-10 h-10 bg-purple-500 rounded-full shadow-lg border-2 border-white animate-pulse">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/>
+              <path d="M15 18H9"/>
+              <path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/>
+              <circle cx="17" cy="18" r="2"/>
+              <circle cx="7" cy="18" r="2"/>
+            </svg>
+          </div>
+        `,
+        className: "custom-marker",
+        iconSize: [40, 40],
+        iconAnchor: [20, 40],
+      });
+
+      const marker = L.marker([driverLocation.latitude, driverLocation.longitude], {
+        icon: driverIcon,
+      }).addTo(map);
+
+      marker.bindPopup(`
+        <div class="p-2">
+          <div class="font-bold text-sm mb-1">🚚 Livreur</div>
+          <div class="text-xs text-gray-600">Position actuelle</div>
+        </div>
+      `);
+
+      bounds.push([driverLocation.latitude, driverLocation.longitude]);
+    }
+
+    // Draw route line
+    if (pickupLocation && deliveryLocation) {
+      const routePoints: L.LatLngExpression[] = [
+        [pickupLocation.latitude, pickupLocation.longitude],
+      ];
+
+      if (driverLocation) {
+        routePoints.push([driverLocation.latitude, driverLocation.longitude]);
+      }
+
+      routePoints.push([deliveryLocation.latitude, deliveryLocation.longitude]);
+
+      L.polyline(routePoints, {
+        color: "#8b5cf6",
+        weight: 3,
+        opacity: 0.7,
+        dashArray: "10, 10",
+      }).addTo(map);
+    }
+
+    // Fit map to bounds
+    if (bounds.length > 0) {
+      map.fitBounds(bounds, { padding: [50, 50] });
+    }
+
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+    };
+  }, [pickupLocation, deliveryLocation, driverLocation]);
+
+  return (
+    <div
+      ref={mapContainerRef}
+      className={`w-full h-full rounded-xl overflow-hidden ${className}`}
+      style={{ minHeight: "400px" }}
+    />
+  );
+}

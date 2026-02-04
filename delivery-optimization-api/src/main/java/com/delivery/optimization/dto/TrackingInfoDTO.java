@@ -37,6 +37,11 @@ public class TrackingInfoDTO {
     private Instant estimatedDeliveryTime;
     private Double progressPercentage;
 
+    // Coordonnées GPS pour la carte
+    private LocationDTO pickupLocation;   // Coordonnées du point de récupération
+    private LocationDTO deliveryLocation; // Coordonnées du point de livraison
+    private LocationDTO driverLocation;   // Position actuelle du livreur (si en cours)
+
     // Package info
     private String packageDescription;
     private Double weight;

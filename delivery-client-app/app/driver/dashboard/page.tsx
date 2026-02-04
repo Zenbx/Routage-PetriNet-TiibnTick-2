@@ -354,7 +354,7 @@ function DeliveryCard({
         <div className="flex flex-col items-end gap-3">
           <div className="text-right">
             <p className="text-2xl font-bold text-primary">
-              {delivery.price.toLocaleString()} FCFA
+              {delivery.price ? delivery.price ? delivery.price.toLocaleString() : '—' : '—'} FCFA
             </p>
             <p className="text-xs text-text-muted">Gain estimé</p>
           </div>
@@ -402,7 +402,7 @@ function ActiveDeliveryCard({ delivery }: { delivery: Delivery }) {
           <div className="flex flex-col items-end gap-3">
             <div className="text-right">
               <p className="text-xl font-bold text-primary">
-                {delivery.price.toLocaleString()} FCFA
+                {delivery.price ? delivery.price.toLocaleString() : '—'} FCFA
               </p>
             </div>
             <span className="text-sm text-primary hover:text-primary-light transition-colors">

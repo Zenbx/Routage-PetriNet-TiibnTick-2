@@ -9,6 +9,7 @@ import { PackageStep } from "@/components/steps/PackageStep";
 import { TrajetStep } from "@/components/steps/TrajetStep";
 import { SignatureStep } from "@/components/steps/SignatureStep";
 import { PaiementStep } from "@/components/steps/PaiementStep";
+import { SuccessModal } from "@/components/ui/SuccessModal";
 import { api } from "@/lib/api";
 
 const steps: Step[] = [
@@ -30,6 +31,8 @@ export default function DepositPage() {
     signature: {},
     paiement: {},
   });
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [trackingCode, setTrackingCode] = useState("");
 
   const nextStep = (data: any) => {
     const stepKeys = ["sender", "recipient", "package", "trajet", "signature", "paiement"];
@@ -95,16 +98,19 @@ export default function DepositPage() {
       // Appel API
       const response = await api.createDelivery(deliveryRequest);
 
-      // Succès
-      alert(`Livraison créée avec succès!\nCode de suivi: ${response.trackingCode}\n\nVous pouvez suivre votre colis avec ce code.`);
-
-      // Reset ou redirection
-      window.location.href = `/tracking?code=${response.trackingCode}`;
+      // Succès - Afficher la modal
+      setTrackingCode(response.trackingCode);
+      setShowSuccessModal(true);
 
     } catch (error: any) {
       console.error("Erreur lors de la soumission:", error);
       alert(`Erreur: ${error.message || "Une erreur est survenue. Veuillez réessayer."}`);
     }
+  };
+
+  const handleContinueToTracking = () => {
+    // Redirection vers la page de suivi avec le code
+    window.location.href = `/tracking?code=${trackingCode}`;
   };
 
   return (
@@ -148,6 +154,13 @@ export default function DepositPage() {
           {currentStep === 6 && <PaiementStep onNext={nextStep} onBack={prevStep} />}
         </div>
       </div>
+
+      {/* Modal de succès */}
+      <SuccessModal
+        isOpen={showSuccessModal}
+        trackingCode={trackingCode}
+        onContinue={handleContinueToTracking}
+      />
     </div>
   );
 }

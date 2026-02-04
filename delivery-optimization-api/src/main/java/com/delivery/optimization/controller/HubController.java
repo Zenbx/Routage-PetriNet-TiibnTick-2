@@ -66,4 +66,24 @@ public class HubController {
             @Parameter(description = "ID de la livraison", required = true) @PathVariable String deliveryId) {
         return hubDepositService.getDepositByDeliveryId(deliveryId);
     }
+
+    /**
+     * Vérifier si un colis est disponible au hub (données masquées)
+     */
+    @GetMapping("/check/{trackingCode}")
+    @Operation(summary = "Vérifier disponibilité colis", description = "Vérifier si un colis est disponible à la récupération au hub (données sensibles masquées)")
+    public Mono<com.delivery.optimization.dto.HubParcelInfoDTO> checkParcelAtHub(
+            @Parameter(description = "Code de suivi", required = true) @PathVariable String trackingCode) {
+        return hubDepositService.checkParcelAtHub(trackingCode);
+    }
+
+    /**
+     * Récupérer un colis au hub avec validation d'identité
+     */
+    @PostMapping("/pickup")
+    @Operation(summary = "Récupérer un colis au hub", description = "Permet au destinataire de récupérer son colis au hub avec vérification d'identité")
+    public Mono<com.delivery.optimization.dto.HubPickupResponse> pickupPackage(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Informations de récupération avec validation d'identité", required = true) @RequestBody com.delivery.optimization.dto.HubPickupRequest request) {
+        return hubDepositService.pickupPackageFromHub(request);
+    }
 }

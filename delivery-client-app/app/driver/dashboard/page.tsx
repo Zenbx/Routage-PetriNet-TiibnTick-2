@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
 import { driverAuth } from "@/lib/driverAuth";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/components/ui/Toast";
 import {
   Package,
   MapPin,
@@ -34,11 +35,13 @@ interface Delivery {
 
 export default function DriverDashboardPage() {
   const router = useRouter();
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState<"available" | "active" | "completed">("available");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [availableDeliveries, setAvailableDeliveries] = useState<Delivery[]>([]);
   const [activeDeliveries, setActiveDeliveries] = useState<Delivery[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [acceptingDeliveryId, setAcceptingDeliveryId] = useState<string | null>(null);
   const [driverName, setDriverName] = useState("Livreur");
   const [driverPhone, setDriverPhone] = useState("");
 
@@ -116,16 +119,23 @@ export default function DriverDashboardPage() {
     try {
       const driver = driverAuth.getDriver();
       if (!driver) {
-        alert("Erreur: Vous devez être connecté");
+        toast.error("Vous devez être connecté");
         router.push("/driver/login");
         return;
       }
 
+      setAcceptingDeliveryId(deliveryId);
       await api.assignDriver(deliveryId, driver.id);
+
+      // Mettre à jour immédiatement l'interface
+      setAvailableDeliveries(prev => prev.filter(d => d.id !== deliveryId));
       fetchDeliveries();
-      alert("Livraison acceptée! Vous êtes maintenant occupé.");
+
+      toast.success("Livraison acceptée! Vous êtes maintenant occupé.");
     } catch (error: any) {
-      alert(`Erreur: ${error.message}`);
+      toast.error(error.message || "Erreur lors de l'acceptation");
+    } finally {
+      setAcceptingDeliveryId(null);
     }
   };
 
@@ -255,6 +265,7 @@ export default function DriverDashboardPage() {
                     key={delivery.id}
                     delivery={delivery}
                     onAccept={handleAcceptDelivery}
+                    isAccepting={acceptingDeliveryId === delivery.id}
                   />
                 ))
               ) : (
@@ -348,9 +359,11 @@ function TabButton({
 function DeliveryCard({
   delivery,
   onAccept,
+  isAccepting,
 }: {
   delivery: Delivery;
   onAccept: (id: string) => void;
+  isAccepting?: boolean;
 }) {
   return (
     <div className="card hover:border-primary transition-all">
@@ -396,10 +409,20 @@ function DeliveryCard({
           </div>
           <button
             onClick={() => onAccept(delivery.id)}
-            className="btn-primary flex items-center gap-2"
+            disabled={isAccepting}
+            className="btn-primary flex items-center gap-2 min-w-[140px]"
           >
-            <CheckCircle className="w-5 h-5" />
-            Accepter
+            {isAccepting ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span>Acceptation...</span>
+              </>
+            ) : (
+              <>
+                <CheckCircle className="w-5 h-5" />
+                <span>Accepter</span>
+              </>
+            )}
           </button>
         </div>
       </div>

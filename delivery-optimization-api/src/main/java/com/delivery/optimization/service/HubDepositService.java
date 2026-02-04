@@ -16,6 +16,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -155,11 +156,17 @@ public class HubDepositService {
                                                                                                                                 // via
                                                                                                                                 // WebSocket
                                                                                                                                 webSocketBroadcaster
-                                                                                                                                                .broadcastDeliveryUpdate(
-                                                                                                                                                                delivery.getId(),
-                                                                                                                                                                "DEPOSITED_AT_HUB",
-                                                                                                                                                                "Colis déposé au hub: "
-                                                                                                                                                                                + hub.getName());
+                                                                                                                                                .sendToTopic(
+                                                                                                                                                                "/topic/tracking/"
+                                                                                                                                                                                + delivery.getTrackingCode(),
+                                                                                                                                                                Map.of(
+                                                                                                                                                                                "deliveryId",
+                                                                                                                                                                                delivery.getId(),
+                                                                                                                                                                                "status",
+                                                                                                                                                                                "AT_HUB",
+                                                                                                                                                                                "message",
+                                                                                                                                                                                "Colis déposé au hub: "
+                                                                                                                                                                                                + hub.getName()));
 
                                                                                                                                 // Construire
                                                                                                                                 // la
@@ -277,11 +284,17 @@ public class HubDepositService {
                                                                                                                                 // via
                                                                                                                                 // WebSocket
                                                                                                                                 webSocketBroadcaster
-                                                                                                                                                .broadcastDeliveryUpdate(
-                                                                                                                                                                delivery.getId(),
-                                                                                                                                                                "PICKED_UP_FROM_HUB",
-                                                                                                                                                                "Colis récupéré au hub: "
-                                                                                                                                                                                + hub.getName());
+                                                                                                                                                .sendToTopic(
+                                                                                                                                                                "/topic/tracking/"
+                                                                                                                                                                                + delivery.getTrackingCode(),
+                                                                                                                                                                Map.of(
+                                                                                                                                                                                "deliveryId",
+                                                                                                                                                                                delivery.getId(),
+                                                                                                                                                                                "status",
+                                                                                                                                                                                "IN_TRANSIT",
+                                                                                                                                                                                "message",
+                                                                                                                                                                                "Colis récupéré au hub: "
+                                                                                                                                                                                                + hub.getName()));
 
                                                                                                                                 // Construire
                                                                                                                                 // la

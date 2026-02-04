@@ -25,6 +25,7 @@ public class Notification {
     @Id
     private String id;
 
+    @Builder.Default
     @Transient
     private boolean newEntity = true;
 

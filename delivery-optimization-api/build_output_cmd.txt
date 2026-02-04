@@ -1,0 +1,55 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] -------------------< com.delivery:optimization-api >--------------------
+[INFO] Building delivery-optimization-api 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.3.2:clean (default-clean) @ optimization-api ---
+[INFO] Deleting F:\Projet Réseau\delivery-optimization-api\target
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ optimization-api ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 20 resources from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ optimization-api ---
+[INFO] Changes detected - recompiling the module! :source
+[INFO] Compiling 88 source files with javac [debug release 17] to target\classes
+[INFO] -------------------------------------------------------------
+[WARNING] COMPILATION WARNING : 
+[INFO] -------------------------------------------------------------
+[WARNING] /F:/Projet Réseau/delivery-optimization-api/src/main/java/com/delivery/optimization/domain/Notification.java:[29,21] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /F:/Projet Réseau/delivery-optimization-api/src/main/java/com/delivery/optimization/mapper/DeliveryMapper.java:[14,17] Unmapped target properties: "etaMin, etaMax, confidence, remainingDistance".
+[INFO] 2 warnings 
+[INFO] -------------------------------------------------------------
+[INFO] -------------------------------------------------------------
+[ERROR] COMPILATION ERROR : 
+[INFO] -------------------------------------------------------------
+[ERROR] /F:/Projet Réseau/delivery-optimization-api/src/main/java/com/delivery/optimization/service/HubDepositService.java:[159,145] cannot find symbol
+  symbol:   method broadcastDeliveryUpdate(java.lang.String,java.lang.String,java.lang.String)
+  location: variable webSocketBroadcaster of type com.delivery.optimization.service.WebSocketBroadcaster
+[ERROR] /F:/Projet Réseau/delivery-optimization-api/src/main/java/com/delivery/optimization/service/HubDepositService.java:[281,145] cannot find symbol
+  symbol:   method broadcastDeliveryUpdate(java.lang.String,java.lang.String,java.lang.String)
+  location: variable webSocketBroadcaster of type com.delivery.optimization.service.WebSocketBroadcaster
+[INFO] 2 errors 
+[INFO] -------------------------------------------------------------
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  22.410 s
+[INFO] Finished at: 2026-02-04T21:22:22+01:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.11.0:compile (default-compile) on project optimization-api: Compilation failure: Compilation failure: 
+[ERROR] /F:/Projet Réseau/delivery-optimization-api/src/main/java/com/delivery/optimization/service/HubDepositService.java:[159,145] cannot find symbol
+[ERROR]   symbol:   method broadcastDeliveryUpdate(java.lang.String,java.lang.String,java.lang.String)
+[ERROR]   location: variable webSocketBroadcaster of type com.delivery.optimization.service.WebSocketBroadcaster
+[ERROR] /F:/Projet Réseau/delivery-optimization-api/src/main/java/com/delivery/optimization/service/HubDepositService.java:[281,145] cannot find symbol
+[ERROR]   symbol:   method broadcastDeliveryUpdate(java.lang.String,java.lang.String,java.lang.String)
+[ERROR]   location: variable webSocketBroadcaster of type com.delivery.optimization.service.WebSocketBroadcaster
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException

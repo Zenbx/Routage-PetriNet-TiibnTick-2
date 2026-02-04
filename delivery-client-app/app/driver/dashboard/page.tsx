@@ -39,21 +39,28 @@ export default function DriverDashboardPage() {
   const [availableDeliveries, setAvailableDeliveries] = useState<Delivery[]>([]);
   const [activeDeliveries, setActiveDeliveries] = useState<Delivery[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [driverName, setDriverName] = useState("Livreur");
+  const [driverPhone, setDriverPhone] = useState("");
 
-  const driver = driverAuth.getDriver();
   const driverStats = {
-    name: driver?.name || "Livreur",
-    phone: driver?.phone || "",
+    name: driverName,
+    phone: driverPhone,
     completedToday: activeDeliveries.filter(d => d.status === "DELIVERED").length,
     earnings: activeDeliveries.filter(d => d.status === "DELIVERED").reduce((sum, d) => sum + d.price, 0),
     rating: 4.8,
   };
 
   useEffect(() => {
-    // Vérifier l'authentification
+    // Vérifier l'authentification et charger les données du driver
     if (!driverAuth.isAuthenticated()) {
       router.push("/driver/login");
       return;
+    }
+
+    const driver = driverAuth.getDriver();
+    if (driver) {
+      setDriverName(driver.name);
+      setDriverPhone(driver.phone);
     }
 
     fetchDeliveries();

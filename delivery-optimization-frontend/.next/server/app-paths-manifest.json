@@ -1,5 +1,14 @@
 {
-  "/page": "app/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/analytics/page": "app/analytics/page.js",
+  "/api/health/route": "app/api/health/route.js",
   "/dashboard/page": "app/dashboard/page.js",
-  "/network/page": "app/network/page.js"
+  "/delivery/[id]/page": "app/delivery/[id]/page.js",
+  "/delivery/page": "app/delivery/page.js",
+  "/delivery/[id]/rerouting/page": "app/delivery/[id]/rerouting/page.js",
+  "/network/page": "app/network/page.js",
+  "/rerouting/page": "app/rerouting/page.js",
+  "/page": "app/page.js",
+  "/petri-net/page": "app/petri-net/page.js",
+  "/tours/plan/page": "app/tours/plan/page.js"
 }

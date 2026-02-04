@@ -549,158 +549,147 @@ Cette section présente un schéma architectural complet du système TiibnTick, 
 \begin{figure}[H]
 \centering
 \begin{tikzpicture}[
-    scale=0.9,
-    transform shape,
-    node distance=4cm and 3cm, % Grande distance pour espacer
-    font=\small\sffamily,
-    % Styles des boites
-    frontend_box/.style={
-        rectangle, draw=cyan!80!black, fill=cyan!5, very thick,
-        minimum width=6cm, minimum height=2.5cm, rounded corners=5pt,
-        align=center, drop shadow={opacity=0.2}
-    },
-    backend_box/.style={
-        rectangle, draw=orange!80!black, fill=orange!5, very thick,
-        minimum width=5cm, minimum height=2cm, rounded corners=5pt,
-        align=center, drop shadow={opacity=0.2}
-    },
-    service_box/.style={
-        rectangle, draw=orange!60!black, fill=white, thick, dashed,
-        minimum width=4cm, minimum height=1cm, rounded corners=3pt,
-        align=center
-    },
-    petri_box/.style={
-        rectangle, draw=red!80!black, fill=red!5, very thick,
-        minimum width=5cm, minimum height=2.5cm, rounded corners=5pt,
-        align=center, drop shadow={opacity=0.2}
-    },
-    db_cyl/.style={
-        cylinder, draw=black!70, fill=yellow!10, shape border rotate=90,
-        aspect=0.25, minimum width=2.5cm, minimum height=2cm, thick,
-        align=center
-    },
-    % Styles des flèches
-    comm_arrow/.style={
-        ->, >=latex, very thick, line width=0.8mm, draw=blue!60!black,
-        rounded corners=10pt
-    },
-    ws_arrow/.style={
-        <->, >=latex, very thick, line width=0.8mm, draw=purple!60!black,
-        dashed, rounded corners=10pt
-    },
-    db_arrow/.style={
-        ->, >=latex, very thick, line width=0.8mm, draw=black!60,
-        rounded corners=5pt
-    },
-    % Labels sur flèches
-    arrow_label/.style={
-        midway, fill=white, text=black!80, font=\footnotesize\bfseries,
-        inner sep=3pt, draw=gray!30, thin, rounded corners=2pt
-    }
+    font=\sffamily\small,
+    % Définition des styles de boites larges et détaillées
+    box/.style={rectangle, draw=black!90, fill=white, very thick, rounded corners=8pt, align=center, minimum height=2.5cm, text width=6.5cm},
+    frontend_style/.style={box, fill=cyan!5, draw=cyan!80!black},
+    backend_style/.style={box, fill=orange!5, draw=orange!80!black},
+    petri_style/.style={box, fill=red!5, draw=red!80!black},
+    db_style/.style={cylinder, draw=black!80, fill=yellow!10, shape border rotate=90, aspect=0.15, minimum height=2cm, minimum width=3cm, align=center},
+    % Styles des flèches avec épaisseur renforcée
+    arrow/.style={->, >=latex, line width=1mm, draw=gray!70},
+    ws_arrow/.style={<->, >=latex, line width=1mm, dashed, draw=purple!80},
+    % Label des flèches
+    label_style/.style={midway, fill=white, font=\scriptsize\bfseries, draw=gray!30, rounded corners=3pt, inner sep=4pt, align=center}
 ]
 
-% ================= GRILLE DE PLACEMENT LARGE =================
+% ================= ESPACEMENT MASSIF (X de -10 à 10, Y de 0 à 20) =================
 
-% 1. Front-End (Haut Gauche)
-\node[frontend_box] (frontend) at (0,0) {
-    \textbf{\Large APPLICATION REACT / NEXT.JS}\\
-    \textit{Layer de Présentation}\\
+% --- NIVEAU 1 : PRÉSENTATION (Y = 20) ---
+\node[frontend_style] (frontend) at (-7, 20) {
+    \textbf{\Large FRONTEND (Client/Driver App)}\\
     \vspace{0.2cm}
-    \begin{itemize}
-        \item Dashboard Admin
-        \item Application Driver (PWA)
-        \item Suivi Client (Tracking)
-    \end{itemize}
+    \begin{minipage}{6cm}
+    \scriptsize
+    \textbf{Composants UI}: Leaflet Map, NotificationBell, AuthForm\\
+    \textbf{Logic}: React Query (Caching), Zustand (State)\\
+    \textbf{Real-time}: SockJS Client (Topic Subscription)
+    \end{minipage}
 };
 
-% 2. WebSocket Client (Haut Droite)
-\node[frontend_box, fill=purple!5, draw=purple!80, right=5cm of frontend] (ws_client) {
-    \textbf{\Large WEBSOCKET CLIENT}\\
-    \textit{Gestion Temps Réel}\\
+\node[frontend_style, draw=purple!80, fill=purple!2] (ws_client) at (7, 20) {
+    \textbf{\Large GESTIONNAIRE WEBSOCKET}\\
     \vspace{0.2cm}
-    Sub: /topic/notifications/*\\
-    Sub: /topic/tracking/*
+    \begin{minipage}{6cm}
+    \scriptsize
+    \textbf{Events}: \texttt{ON_CONNECT}, \texttt{ON_MESSAGE}\\
+    \textbf{Topics}: \texttt{/topic/notifications/\{trackingCode\}}\\
+    \textbf{Logic}: Heartbeat, Auto-reconnect, Payload Parsing
+    \end{minipage}
 };
 
-% 3. API Gateway / Controllers (Milieu Centre)
-\node[backend_box, below=4cm of frontend, xshift=2.5cm] (controllers) {
-    \textbf{\Large API CONTROLLERS}\\
-    \textit{Spring WebFlux (Réactif)}\\
-    Exposition REST Endpoints
+% --- NIVEAU 2 : INTERFACE API (Y = 14) ---
+\node[backend_style, text width=8cm, minimum height=2cm] (controllers) at (0, 14) {
+    \textbf{\Large API LAYER (Controllers réactifs)}\\
+    \vspace{0.1cm}
+    \begin{minipage}{7.5cm}
+    \scriptsize
+    \textbf{Technologies}: Spring WebFlux, Project Reactor (\texttt{Mono}/\texttt{Flux})\\
+    \textbf{Validation}: Bean Validation, Custom Constraints (Phone, Coordinates)
+    \end{minipage}
 };
 
-% 4. Services Métier (Sous Controllers)
-\node[backend_box, below=2cm of controllers, minimum height=4cm] (services) {
-    \textbf{\Large SERVICES MÉTIER (CORE)}\\
-    \vspace{2.5cm} % Espace pour les boites internes
-};
-% Boites internes aux services
-\node[service_box] (srv_notif) at ([yshift=0.5cm]services.center) {Notification \& Hub Service};
-\node[service_box] (srv_algo) at ([yshift=-1cm]services.center) {Algorithmes VRP \& A*};
-
-% 5. Petri Net API (Droite des services)
-\node[petri_box, right=4cm of services] (petri_api) {
-    \textbf{\Large PETRI NET ENGINE}\\
-    \textit{Gestion Workflow Formel}\\
+% --- NIVEAU 3 : LOGIQUE MÉTIER & WORKFLOW (Y = 7) ---
+\node[backend_style, text width=7.5cm, minimum height=4cm] (services) at (-6, 7) {
+    \textbf{\Large DELIVERY SERVICES (Core Logic)}\\
     \vspace{0.2cm}
-    Transition d'États\\
-    Validation Logique
+    \begin{minipage}{7cm}
+    \scriptsize
+    - \textbf{Routing}: Algorithme A* (Composite Cost Function)\\
+    - \textbf{Optimization}: Google OR-Tools (Solveur CVRP)\\
+    - \textbf{Tracking}: Filtre de Kalman (Prediction d'ETA)\\
+    - \textbf{Hubs}: HubDepositService (Logic Dépôt/Retrait)\\
+    - \textbf{Notifications}: NotificationService (Trigger Logic)
+    \end{minipage}
 };
 
-% 6. Bases de données (Tout en bas)
-\node[db_cyl, below=3cm of services, xshift=-3cm] (db_deliv) {
-    \textbf{DELIVERY DB}\\
+\node[petri_style, text width=7.5cm, minimum height=4cm] (petri_net) at (8, 7) {
+    \textbf{\Large PETRI NET WORKFLOW API}\\
+    \vspace{0.2cm}
+    \begin{minipage}{7cm}
+    \scriptsize
+    - \textbf{Engine}: Tir de transitions mathématiques\\
+    - \textbf{Model}: Places (Dépôt, Transit, Hub) \& Transitions\\
+    - \textbf{Safety}: Vérification formelle du cycle de vie\\
+    - \textbf{Logic}: Empêcher les états impossibles (ex: Delivered avant PickedUp)
+    \end{minipage}
+};
+
+% --- NIVEAU 4 : PERSISTANCE (Y = 0) ---
+\node[db_style] (db_delivery) at (-6, 0) {
+    \textbf{\Large DB DELIVERY}\\
     PostgreSQL + PostGIS\\
-    (Données Métier)
+    \footnotesize Noeuds, Arcs routiers,\\
+    Livraisons, Historique GPS
 };
 
-\node[db_cyl, below=3cm of petri_api] (db_petri) {
-    \textbf{PETRI DB}\\
+\node[db_style] (db_petri) at (8, 0) {
+    \textbf{\Large DB PETRI NET}\\
     PostgreSQL\\
-    (Tokens \& Places)
+    \footnotesize Graphe du réseau de Petri,\\
+    Tokens actifs, Marquages
 };
 
+% ================= FLÈCHES LONGUES AVEC TYPES DE DONNÉES PRÉCIS =================
 
-% ================= LIAISONS LONGUES ET DÉTAILLÉES =================
+% 1. Frontend -> Controllers (REST EXTÉRIEUR)
+\draw[arrow] (frontend.south) .. controls (-7, 17) and (0, 17) .. (controllers.north)
+    node[pos=0.5, label_style] {
+    \textbf{HTTP POST/GET (JSON)}\\
+    \texttt{DeliveryDTO}, \texttt{HubDepositRequest}\\
+    \texttt{Coordinates \{lat, lng\}}
+    };
 
-% A. Frontend -> API (HTTP REST)
-\draw[comm_arrow] (frontend.south) -- ++(0,-1.5) -| (controllers.north)
-    node[pos=0.25, arrow_label] {HTTPS / JSON (REST)};
+% 2. Backend -> WS Broadcaster (INTERNE)
+\draw[ws_arrow] (services.north) .. controls (-6, 17) and (7, 17) .. (ws_client.south)
+    node[pos=0.6, label_style] {
+    \textbf{INTERNAL PUSH (STOMP)}\\
+    \texttt{NotificationDTO}, \texttt{TrackingUpdate}\\
+    \texttt{Status: AT_HUB|DELIVERED}
+    };
 
-% B. Frontend <-> WebSocket (Communication bidirectionnelle)
-\draw[ws_arrow] (frontend.east) -- (ws_client.west)
-    node[arrow_label] {Interne App};
-    
-% C. Controllers -> Services
-\draw[comm_arrow] (controllers.south) -- (services.north);
+% 3. Gateway -> Services
+\draw[arrow] (controllers.south) -- (services.north)
+    node[pos=0.5, label_style] {Reactive Call (\texttt{flatMap})};
 
-% D. Services -> WebSocket (Broadcast Push)
-\draw[ws_arrow] (services.east) -- ++(1,0) |- (ws_client.south)
-    node[pos=0.7, arrow_label] {PUSH NOTIFICATIONS (STOMP)};
+% 4. Services -> Petri Net API
+\draw[arrow] (services.east) -- (petri_net.west)
+    node[pos=0.5, label_style] {
+    \textbf{HTTP POST}\\
+    \texttt{TransitionRequest}\\
+    \texttt{entityId}, \texttt{timestamp}
+    };
 
-% E. Services -> Petri Net (Sync)
-\draw[comm_arrow] (srv_notif.east) -- ++(2,0) |- (petri_api.west)
-    node[pos=0.5, arrow_label] {TRIGGER TRANSITION};
+% 5. Services -> Database
+\draw[arrow] (services.south) -- (db_delivery.north)
+    node[pos=0.5, label_style] {\textbf{R2DBC}: SQL Queries};
 
-% F. Services -> Delivery DB (Persistence)
-\draw[db_arrow] (services.south) -| (db_deliv.north)
-    node[pos=0.7, arrow_label] {R2DBC (Non-bloquant)};
+% 6. Petri Net -> Database
+\draw[arrow] (petri_net.south) -- (db_petri.north)
+    node[pos=0.5, label_style] {\textbf{JPA}: Entity Persistence};
 
-% G. Petri Net -> Petri DB
-\draw[db_arrow] (petri_api.south) -- (db_petri.north)
-    node[arrow_label] {JPA / Hibernate};
+% 7. Frontend -> WS Connection
+\draw[ws_arrow, dashed] (frontend.east) -- (ws_client.west)
+    node[pos=0.5, label_style] {Full Duplex Stream\\JSON Payloads};
 
-% H. Petri -> Services (Retour état, optionnel, via réponse HTTP)
-%\draw[comm_arrow, dashed, color=gray] (petri_api.south west) -- (services.south east);
-
-% ================= ANNOTATIONS DE GROUPEMENT =================
-
-\node[above=0.5cm of frontend, font=\bfseries\sffamily, color=cyan!60!black] {ZONE CLIENT (NAVIGATEUR / MOBILE)};
-\node[above=0.5cm of controllers, font=\bfseries\sffamily, color=orange!60!black] {ZONE SERVEUR (CLOUD RAILWAY)};
-\node[right=0.5cm of db_petri, font=\bfseries\sffamily, color=black!60, rotate=90] {PERSISTANCE};
+% ================= ANNOTATIONS LATÉRALES =================
+\node[anchor=west, font=\Large\bfseries, color=gray!50] at (13, 20) {PRESENTATION};
+\node[anchor=west, font=\Large\bfseries, color=gray!50] at (13, 14) {API GATEWAY};
+\node[anchor=west, font=\Large\bfseries, color=gray!50] at (13, 7) {CORE LOGIC};
+\node[anchor=west, font=\Large\bfseries, color=gray!50] at (13, 0) {STORAGE};
 
 \end{tikzpicture}
-\caption{Architecture Détaillée TiibnTick : Vue macroscopique des interactions et flux de données étendus.}
+\caption{Architecture logicielle exhaustive du système TiibnTick : Interactions inter-services et typage des flux de données.}
 \label{fig:architecture_globale}
 \end{figure}
 

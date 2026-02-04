@@ -1,4 +1,3 @@
-import { HubDeposit } from "./api";
 
 export interface HubInfo {
     id: string;

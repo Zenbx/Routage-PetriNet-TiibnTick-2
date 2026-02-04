@@ -20,5 +20,6 @@
     <include file="classpath:db/changelog/v1/013-add-delivery-logistics-fields.sql" relativeToChangelogFile="false"/>
     <include file="classpath:db/changelog/v1/015-add-geographic-fields.sql" relativeToChangelogFile="false"/>
     <include file="classpath:db/changelog/v1/014-seed-logistics-deliveries.sql" relativeToChangelogFile="false"/>
+    <include file="classpath:db/changelog/v1/016-add-driver-auth-fields.sql" relativeToChangelogFile="false"/>
 
 </databaseChangeLog>

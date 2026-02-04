@@ -64,7 +64,13 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
-        
+
+        <!-- Spring Security Crypto (pour BCrypt) -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-crypto</artifactId>
+        </dependency>
+
         <!-- Actuator (métriques) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

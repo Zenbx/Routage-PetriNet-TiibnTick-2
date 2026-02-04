@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
+import { driverAuth } from "@/lib/driverAuth";
+import { useRouter } from "next/navigation";
 import {
   Package,
   MapPin,
@@ -31,30 +33,47 @@ interface Delivery {
 }
 
 export default function DriverDashboardPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<"available" | "active" | "completed">("available");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [availableDeliveries, setAvailableDeliveries] = useState<Delivery[]>([]);
   const [activeDeliveries, setActiveDeliveries] = useState<Delivery[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const driver = driverAuth.getDriver();
   const driverStats = {
-    name: "Jean Dupont",
-    phone: "+237 699 12 34 56",
+    name: driver?.name || "Livreur",
+    phone: driver?.phone || "",
     completedToday: activeDeliveries.filter(d => d.status === "DELIVERED").length,
     earnings: activeDeliveries.filter(d => d.status === "DELIVERED").reduce((sum, d) => sum + d.price, 0),
     rating: 4.8,
   };
 
   useEffect(() => {
+    // Vérifier l'authentification
+    if (!driverAuth.isAuthenticated()) {
+      router.push("/driver/login");
+      return;
+    }
+
     fetchDeliveries();
     const interval = setInterval(fetchDeliveries, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [router]);
 
   const fetchDeliveries = async () => {
     try {
+      const driver = driverAuth.getDriver();
+      if (!driver) return;
+
+      // Récupérer les livraisons disponibles (PENDING - non assignées)
       const pending = await api.getAllDeliveries({ status: 'PENDING' });
-      const myDeliveries = await api.getAllDeliveries({ status: 'ACCEPTED,PICKED_UP,IN_TRANSIT,DELIVERED' });
+
+      // Récupérer les livraisons du livreur connecté
+      const myDeliveries = await api.getAllDeliveries({
+        driverId: driver.id,
+        status: 'ACCEPTED,PICKED_UP,IN_TRANSIT,DELIVERED'
+      });
 
       setAvailableDeliveries(pending.map((d: any) => ({
         id: d.id,
@@ -88,14 +107,24 @@ export default function DriverDashboardPage() {
 
   const handleAcceptDelivery = async (deliveryId: string) => {
     try {
-      const driverId = "driver-123"; // TODO: get from auth
-      await api.assignDriver(deliveryId, driverId);
-      await api.updateDeliveryStatus(deliveryId, 'ACCEPTED');
+      const driver = driverAuth.getDriver();
+      if (!driver) {
+        alert("Erreur: Vous devez être connecté");
+        router.push("/driver/login");
+        return;
+      }
+
+      await api.assignDriver(deliveryId, driver.id);
       fetchDeliveries();
-      alert("Livraison acceptée!");
+      alert("Livraison acceptée! Vous êtes maintenant occupé.");
     } catch (error: any) {
       alert(`Erreur: ${error.message}`);
     }
+  };
+
+  const handleLogout = () => {
+    driverAuth.logout();
+    router.push("/driver/login");
   };
 
   return (
@@ -121,13 +150,13 @@ export default function DriverDashboardPage() {
                 <User className="w-4 h-4 text-primary" />
                 <span className="text-text-muted">{driverStats.name}</span>
               </div>
-              <Link
-                href="/driver/login"
+              <button
+                onClick={handleLogout}
                 className="text-sm text-text-muted hover:text-primary transition-colors flex items-center gap-2"
               >
                 <LogOut className="w-4 h-4" />
                 Déconnexion
-              </Link>
+              </button>
             </div>
 
             {/* Mobile Menu Button */}
@@ -151,13 +180,13 @@ export default function DriverDashboardPage() {
                   <User className="w-4 h-4 text-primary" />
                   <span className="text-text-muted">{driverStats.name}</span>
                 </div>
-                <Link
-                  href="/driver/login"
+                <button
+                  onClick={handleLogout}
                   className="text-sm text-text-muted hover:text-primary transition-colors flex items-center gap-2"
                 >
                   <LogOut className="w-4 h-4" />
                   Déconnexion
-                </Link>
+                </button>
               </div>
             </div>
           )}

@@ -1,11 +1,13 @@
 package com.delivery.optimization.controller;
 
 import com.delivery.optimization.domain.Delivery;
+import com.delivery.optimization.domain.Driver;
 import com.delivery.optimization.dto.DeliveryResponseDTO;
 import com.delivery.optimization.dto.PackageInfoDTO;
 import com.delivery.optimization.dto.RecipientInfoDTO;
 import com.delivery.optimization.dto.SenderInfoDTO;
 import com.delivery.optimization.repository.DeliveryRepository;
+import com.delivery.optimization.repository.DriverRepository;
 import com.delivery.optimization.service.StateTransitionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -33,6 +35,7 @@ import java.util.Map;
 public class DeliveryDriverController {
 
     private final DeliveryRepository deliveryRepository;
+    private final DriverRepository driverRepository;
     private final StateTransitionService stateTransitionService;
 
     /**
@@ -92,6 +95,15 @@ public class DeliveryDriverController {
                     return deliveryRepository.save(delivery);
                 })
                 .flatMap(delivery -> {
+                    // Mettre à jour le statut du livreur à BUSY
+                    return driverRepository.findById(driverId)
+                            .flatMap(driver -> {
+                                driver.setStatus(Driver.DriverStatus.BUSY);
+                                return driverRepository.save(driver);
+                            })
+                            .thenReturn(delivery);
+                })
+                .flatMap(delivery -> {
                     // Transition Petri Net: ASSIGNED → ACCEPTED
                     return stateTransitionService.transitionState(
                             delivery.getId(),
@@ -100,7 +112,7 @@ public class DeliveryDriverController {
                     ).thenReturn(delivery);
                 })
                 .map(this::mapToResponseDTO)
-                .doOnSuccess(response -> log.info("Driver {} accepted delivery {}", driverId, deliveryId))
+                .doOnSuccess(response -> log.info("Driver {} accepted delivery {} and status changed to BUSY", driverId, deliveryId))
                 .doOnError(error -> log.error("Failed to accept delivery: {}", error.getMessage()));
     }
 
@@ -256,6 +268,15 @@ public class DeliveryDriverController {
                     return deliveryRepository.save(delivery);
                 })
                 .flatMap(delivery -> {
+                    // Mettre à jour le statut du livreur à AVAILABLE
+                    return driverRepository.findById(driverId)
+                            .flatMap(driver -> {
+                                driver.setStatus(Driver.DriverStatus.AVAILABLE);
+                                return driverRepository.save(driver);
+                            })
+                            .thenReturn(delivery);
+                })
+                .flatMap(delivery -> {
                     return stateTransitionService.transitionState(
                             delivery.getId(),
                             "DELIVERED",
@@ -271,7 +292,7 @@ public class DeliveryDriverController {
                     response.put("message", "Livraison terminée avec succès");
                     return response;
                 })
-                .doOnSuccess(response -> log.info("Delivery {} marked as delivered", deliveryId))
+                .doOnSuccess(response -> log.info("Delivery {} marked as delivered, driver {} status changed to AVAILABLE", deliveryId, driverId))
                 .doOnError(error -> log.error("Failed to mark as delivered: {}", error.getMessage()));
     }
 

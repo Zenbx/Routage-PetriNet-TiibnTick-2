@@ -1,16 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { Mail, Lock, Truck, ArrowRight } from "lucide-react";
+import { Mail, Lock, Truck, User, Phone, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { driverAuth } from "@/lib/driverAuth";
 
-export default function DriverLoginPage() {
+export default function DriverRegisterPage() {
   const router = useRouter();
   const [formData, setFormData] = useState({
+    name: "",
     email: "",
     password: "",
+    phone: "",
+    vehicleType: "",
+    licensePlate: "",
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -21,10 +25,10 @@ export default function DriverLoginPage() {
     setError("");
 
     try {
-      await driverAuth.login(formData);
+      await driverAuth.register(formData);
       router.push("/driver/dashboard");
     } catch (err: any) {
-      setError(err.message || "Erreur de connexion");
+      setError(err.message || "Erreur d'inscription");
       setIsLoading(false);
     }
   };
@@ -38,22 +42,42 @@ export default function DriverLoginPage() {
             <Truck className="w-10 h-10 text-primary" />
           </div>
           <h1 className="text-3xl font-bold text-white mb-2">
-            Espace Livreur
+            Devenir Livreur
           </h1>
           <p className="text-text-muted">
-            Connectez-vous pour accéder à vos livraisons
+            Rejoignez notre équipe de livreurs
           </p>
         </div>
 
-        {/* Login Card */}
+        {/* Register Card */}
         <div className="card">
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-5">
             {/* Error Message */}
             {error && (
               <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
                 <p className="text-red-500 text-sm">{error}</p>
               </div>
             )}
+
+            {/* Name Input */}
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Nom complet <span className="text-primary">*</span>
+              </label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted pointer-events-none z-10" />
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
+                  placeholder="Jean Dupont"
+                  className="input-field pl-11"
+                  required
+                />
+              </div>
+            </div>
 
             {/* Email Input */}
             <div>
@@ -69,6 +93,26 @@ export default function DriverLoginPage() {
                     setFormData({ ...formData, email: e.target.value })
                   }
                   placeholder="votre.email@example.com"
+                  className="input-field pl-11"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Phone Input */}
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Téléphone <span className="text-primary">*</span>
+              </label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted pointer-events-none z-10" />
+                <input
+                  type="tel"
+                  value={formData.phone}
+                  onChange={(e) =>
+                    setFormData({ ...formData, phone: e.target.value })
+                  }
+                  placeholder="+237 6 XX XX XX XX"
                   className="input-field pl-11"
                   required
                 />
@@ -91,8 +135,49 @@ export default function DriverLoginPage() {
                   placeholder="••••••••"
                   className="input-field pl-11"
                   required
+                  minLength={6}
                 />
               </div>
+            </div>
+
+            {/* Vehicle Type Input */}
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Type de véhicule <span className="text-primary">*</span>
+              </label>
+              <div className="relative">
+                <Truck className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted pointer-events-none z-10" />
+                <select
+                  value={formData.vehicleType}
+                  onChange={(e) =>
+                    setFormData({ ...formData, vehicleType: e.target.value })
+                  }
+                  className="input-field pl-11"
+                  required
+                >
+                  <option value="">Sélectionnez un type</option>
+                  <option value="MOTO">Moto</option>
+                  <option value="VOITURE">Voiture</option>
+                  <option value="CAMIONNETTE">Camionnette</option>
+                  <option value="VELO">Vélo</option>
+                </select>
+              </div>
+            </div>
+
+            {/* License Plate Input (Optional) */}
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Plaque d'immatriculation
+              </label>
+              <input
+                type="text"
+                value={formData.licensePlate}
+                onChange={(e) =>
+                  setFormData({ ...formData, licensePlate: e.target.value })
+                }
+                placeholder="ABC-123-DE"
+                className="input-field"
+              />
             </div>
 
             {/* Submit Button */}
@@ -104,11 +189,11 @@ export default function DriverLoginPage() {
               {isLoading ? (
                 <>
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Connexion...</span>
+                  <span>Inscription...</span>
                 </>
               ) : (
                 <>
-                  <span>Se connecter</span>
+                  <span>S'inscrire</span>
                   <ArrowRight className="w-5 h-5" />
                 </>
               )}
@@ -122,20 +207,20 @@ export default function DriverLoginPage() {
             </div>
             <div className="relative flex justify-center text-sm">
               <span className="px-4 bg-background-card text-text-muted">
-                Nouveau livreur ?
+                Déjà livreur ?
               </span>
             </div>
           </div>
 
-          {/* Register Link */}
+          {/* Login Link */}
           <div className="text-center">
             <p className="text-sm text-text-muted">
-              Rejoignez notre équipe de livreurs{" "}
+              Vous avez déjà un compte ?{" "}
               <Link
-                href="/driver/register"
+                href="/driver/login"
                 className="text-primary hover:text-primary-light font-medium transition-colors"
               >
-                S'inscrire
+                Se connecter
               </Link>
             </p>
           </div>

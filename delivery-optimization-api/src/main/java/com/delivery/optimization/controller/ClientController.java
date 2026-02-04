@@ -74,11 +74,11 @@ public class ClientController {
                             .deliveryLocationId(request.getRecipient().getDeliveryLocationId())
 
                             // Package info
-                            .packageDescription(request.getPackage_().getDescription())
-                            .weight(request.getPackage_().getWeight())
-                            .packageLength(request.getPackage_().getLength())
-                            .packageWidth(request.getPackage_().getWidth())
-                            .packageHeight(request.getPackage_().getHeight())
+                            .packageDescription(request.getPackageInfo().getDescription())
+                            .weight(request.getPackageInfo().getWeight())
+                            .packageLength(request.getPackageInfo().getLength())
+                            .packageWidth(request.getPackageInfo().getWidth())
+                            .packageHeight(request.getPackageInfo().getHeight())
 
                             // Deadline (optionnel)
                             .deadline(request.getPreferredDeadline())
@@ -138,7 +138,7 @@ public class ClientController {
         double basePrice = 5.0; // Prix de base
 
         // Majoration selon le poids
-        double weight = request.getPackage_().getWeight();
+        double weight = request.getPackageInfo().getWeight();
         double weightSurcharge = weight > 5.0 ? (weight - 5.0) * 0.5 : 0.0;
 
         // Majoration pour livraison à domicile vs point relais

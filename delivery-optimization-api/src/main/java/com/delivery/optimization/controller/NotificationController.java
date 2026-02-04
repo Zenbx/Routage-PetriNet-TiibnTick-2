@@ -14,7 +14,7 @@ import reactor.core.publisher.Mono;
  * Contrôleur REST pour les notifications client
  */
 @RestController
-@RequestMapping("/notifications")
+@RequestMapping("/api/v1/notifications")
 @RequiredArgsConstructor
 @Tag(name = "Notifications", description = "Gestion des notifications client")
 public class NotificationController {

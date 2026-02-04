@@ -1,5 +1,5 @@
 // API Configuration
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081/api";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
 
 // Types
 export interface Location {
@@ -276,7 +276,7 @@ class DeliveryAPI {
   }
 
   async getDriverDeliveries(driverId: string): Promise<any[]> {
-    return this.request<any[]>(`/drivers/${driverId}/deliveries`, {
+    return this.request<any[]>(`/v1/delivery-driver/deliveries?driverId=${driverId}`, {
       method: "GET",
     });
   }
@@ -343,11 +343,10 @@ class DeliveryAPI {
     });
   }
 
-  // ===== HUB DEPOSITS =====
+  // ===== HUB MANAGEMENT =====
 
-  async getNearbyHubs(lat: number, lng: number, radiusKm?: number): Promise<any[]> {
-    const radius = radiusKm || 10.0;
-    return this.request<any[]>(`/hub/nearby?lat=${lat}&lng=${lng}&radiusKm=${radius}`, {
+  async getNearbyHubs(lat: number, lng: number, radiusKm: number = 10): Promise<any[]> {
+    return this.request<any[]>(`/v1/hub/nearby?lat=${lat}&lng=${lng}&radiusKm=${radiusKm}`, {
       method: "GET",
     });
   }
@@ -360,27 +359,29 @@ class DeliveryAPI {
     storageLocation?: string;
     depositProof?: string;
   }): Promise<any> {
-    return this.request<any>("/hub/deposit", {
+    return this.request<any>("/v1/hub/deposit", {
       method: "POST",
       body: JSON.stringify(request),
     });
   }
 
   async getHubDeposits(hubId: string, status?: string): Promise<any[]> {
-    const statusParam = status ? `?status=${status}` : "";
-    return this.request<any[]>(`/hub/${hubId}/deposits${statusParam}`, {
+    const url = status
+      ? `/v1/hub/${hubId}/deposits?status=${status}`
+      : `/v1/hub/${hubId}/deposits`;
+    return this.request<any[]>(url, {
       method: "GET",
     });
   }
 
   async getDepositByDeliveryId(deliveryId: string): Promise<any> {
-    return this.request<any>(`/hub/deposit/delivery/${deliveryId}`, {
+    return this.request<any>(`/v1/hub/deposit/delivery/${deliveryId}`, {
       method: "GET",
     });
   }
 
   async checkParcelAtHub(trackingCode: string): Promise<any> {
-    return this.request<any>(`/hub/check/${trackingCode}`, {
+    return this.request<any>(`/v1/hub/check/${trackingCode}`, {
       method: "GET",
     });
   }
@@ -401,31 +402,31 @@ class DeliveryAPI {
   // ===== NOTIFICATIONS =====
 
   async getNotificationsByTrackingCode(trackingCode: string): Promise<any[]> {
-    return this.request<any[]>(`/notifications/tracking/${trackingCode}`, {
+    return this.request<any[]>(`/v1/notifications/tracking/${trackingCode}`, {
       method: "GET",
     });
   }
 
   async getUnreadNotifications(phone: string): Promise<any[]> {
-    return this.request<any[]>(`/notifications/unread?phone=${encodeURIComponent(phone)}`, {
+    return this.request<any[]>(`/v1/notifications/unread?phone=${encodeURIComponent(phone)}`, {
       method: "GET",
     });
   }
 
   async countUnreadNotifications(phone: string): Promise<number> {
-    return this.request<number>(`/notifications/unread/count?phone=${encodeURIComponent(phone)}`, {
+    return this.request<number>(`/v1/notifications/unread/count?phone=${encodeURIComponent(phone)}`, {
       method: "GET",
     });
   }
 
   async markNotificationAsRead(notificationId: string): Promise<any> {
-    return this.request<any>(`/notifications/${notificationId}/read`, {
+    return this.request<any>(`/v1/notifications/${notificationId}/read`, {
       method: "PUT",
     });
   }
 
   async markAllNotificationsAsRead(phone: string): Promise<void> {
-    return this.request<void>(`/notifications/read-all?phone=${encodeURIComponent(phone)}`, {
+    return this.request<void>(`/v1/notifications/read-all?phone=${encodeURIComponent(phone)}`, {
       method: "PUT",
     });
   }

@@ -17,7 +17,7 @@ import reactor.core.publisher.Mono;
  * Contrôleur pour la gestion des dépôts de colis aux hubs
  */
 @RestController
-@RequestMapping("/hub")
+@RequestMapping("/api/v1/hub")
 @RequiredArgsConstructor
 @Tag(name = "Hub Deposit", description = "Gestion des dépôts de colis aux hubs/points relais")
 public class HubController {

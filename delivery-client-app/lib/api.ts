@@ -165,6 +165,12 @@ class DeliveryAPI {
     });
   }
 
+  async getDeliveryDetails(id: string): Promise<any> {
+    return this.request<any>(`/v1/delivery-driver/delivery/${id}/details`, {
+      method: "GET",
+    });
+  }
+
   async trackDelivery(trackingCode: string): Promise<TrackingResponse> {
     return this.request<TrackingResponse>(`/v1/client/tracking/${trackingCode}`, {
       method: "GET",

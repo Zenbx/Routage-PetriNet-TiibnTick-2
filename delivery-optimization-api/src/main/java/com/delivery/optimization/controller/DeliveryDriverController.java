@@ -2,7 +2,9 @@ package com.delivery.optimization.controller;
 
 import com.delivery.optimization.domain.Delivery;
 import com.delivery.optimization.domain.Driver;
+import com.delivery.optimization.dto.DeliveryDetailsDTO;
 import com.delivery.optimization.dto.DeliveryResponseDTO;
+import com.delivery.optimization.dto.LocationDTO;
 import com.delivery.optimization.dto.PackageInfoDTO;
 import com.delivery.optimization.dto.RecipientInfoDTO;
 import com.delivery.optimization.dto.SenderInfoDTO;
@@ -320,6 +322,31 @@ public class DeliveryDriverController {
     }
 
     /**
+     * Récupérer les détails complets d'une livraison avec coordonnées GPS
+     * Utilisé pour la navigation et l'affichage de la carte
+     */
+    @GetMapping("/delivery/{id}/details")
+    @Operation(
+        summary = "Détails complets d'une livraison",
+        description = "Retourne tous les détails d'une livraison incluant les coordonnées GPS pour la navigation"
+    )
+    public Mono<DeliveryDetailsDTO> getDeliveryDetails(
+            @Parameter(description = "ID de la livraison")
+            @PathVariable String id
+    ) {
+        log.info("Fetching delivery details for {}", id);
+
+        return deliveryRepository.findById(id)
+                .switchIfEmpty(Mono.error(new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Livraison non trouvée"
+                )))
+                .map(this::mapToDetailsDTO)
+                .doOnSuccess(details -> log.info("Retrieved details for delivery {}", id))
+                .doOnError(error -> log.error("Failed to fetch delivery details: {}", error.getMessage()));
+    }
+
+    /**
      * Mapping Delivery → DeliveryResponseDTO
      */
     private DeliveryResponseDTO mapToResponseDTO(Delivery delivery) {
@@ -352,5 +379,80 @@ public class DeliveryDriverController {
                         .height(delivery.getPackageHeight())
                         .build())
                 .build();
+    }
+
+    /**
+     * Mapping Delivery → DeliveryDetailsDTO (avec coordonnées GPS)
+     */
+    private DeliveryDetailsDTO mapToDetailsDTO(Delivery delivery) {
+        return DeliveryDetailsDTO.builder()
+                .id(delivery.getId())
+                .trackingCode(delivery.getTrackingCode())
+                .status(delivery.getStatus())
+                .createdAt(delivery.getCreatedAt())
+                .acceptedAt(delivery.getAcceptedAt())
+                .pickedUpAt(delivery.getPickedUpAt())
+                .deliveredAt(delivery.getDeliveredAt())
+                .deadline(delivery.getDeadline())
+
+                // Sender info
+                .senderName(delivery.getSenderName())
+                .senderPhone(delivery.getSenderPhone())
+                .senderAddress(delivery.getSenderAddress())
+                .pickupType(delivery.getPickupType())
+                .pickupLocationId(delivery.getPickupLocationId())
+                .pickupLocation(parseLocation(delivery.getPickupLocationId(), delivery.getSenderAddress()))
+
+                // Recipient info
+                .recipientName(delivery.getRecipientName())
+                .recipientPhone(delivery.getRecipientPhone())
+                .recipientAddress(delivery.getRecipientAddress())
+                .deliveryType(delivery.getDeliveryType())
+                .deliveryLocationId(delivery.getDeliveryLocationId())
+                .deliveryLocation(parseLocation(delivery.getDeliveryLocationId(), delivery.getRecipientAddress()))
+
+                // Package info
+                .packageDescription(delivery.getPackageDescription())
+                .weight(delivery.getWeight())
+                .packageLength(delivery.getPackageLength())
+                .packageWidth(delivery.getPackageWidth())
+                .packageHeight(delivery.getPackageHeight())
+
+                // Price and driver
+                .price(delivery.getPrice())
+                .driverId(delivery.getDriverId())
+                .build();
+    }
+
+    /**
+     * Parse une chaîne de coordonnées au format "lat,lng" en LocationDTO
+     */
+    private LocationDTO parseLocation(String locationId, String address) {
+        if (locationId == null || locationId.isEmpty()) {
+            return null;
+        }
+
+        // Si c'est un point relais, on n'a pas les coordonnées pour l'instant
+        if (locationId.startsWith("RELAY_")) {
+            return null;
+        }
+
+        // Parser le format "lat,lng"
+        try {
+            String[] parts = locationId.split(",");
+            if (parts.length == 2) {
+                double latitude = Double.parseDouble(parts[0].trim());
+                double longitude = Double.parseDouble(parts[1].trim());
+                return LocationDTO.builder()
+                        .latitude(latitude)
+                        .longitude(longitude)
+                        .address(address)
+                        .build();
+            }
+        } catch (NumberFormatException e) {
+            log.warn("Failed to parse location coordinates: {}", locationId);
+        }
+
+        return null;
     }
 }

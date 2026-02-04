@@ -18,8 +18,21 @@ import {
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import dynamic from "next/dynamic";
+
+// Dynamically import map component (client-side only)
+const DeliveryMap = dynamic(
+  () => import("@/components/map/DeliveryMap").then((mod) => mod.DeliveryMap),
+  { ssr: false }
+);
 
 // Types
+interface Location {
+  latitude: number;
+  longitude: number;
+  address?: string;
+}
+
 interface DeliveryDetails {
   id: string;
   trackingCode: string;
@@ -33,6 +46,7 @@ interface DeliveryDetails {
   senderCity: string;
   senderRegion: string;
   senderLandmark: string;
+  pickupLocation?: Location;
 
   // Recipient
   recipientName: string;
@@ -41,6 +55,7 @@ interface DeliveryDetails {
   recipientCity: string;
   recipientRegion: string;
   recipientLandmark: string;
+  deliveryLocation?: Location;
 
   // Package
   packageDescription: string;
@@ -70,7 +85,7 @@ export default function DeliveryDetailsPage() {
   useEffect(() => {
     const fetchDelivery = async () => {
       try {
-        const data = await api.getDelivery(deliveryId);
+        const data = await api.getDeliveryDetails(deliveryId);
 
         // Map API response to DeliveryDetails
         const mappedDelivery: DeliveryDetails = {
@@ -82,16 +97,18 @@ export default function DeliveryDetailsPage() {
           senderName: data.senderName,
           senderPhone: data.senderPhone,
           senderAddress: data.senderAddress,
-          senderCity: data.senderCity,
-          senderRegion: data.senderRegion,
-          senderLandmark: data.senderLandmark || "",
+          senderCity: data.senderAddress?.split(',').pop()?.trim() || "",
+          senderRegion: "",
+          senderLandmark: "",
+          pickupLocation: data.pickupLocation,
 
           recipientName: data.recipientName,
           recipientPhone: data.recipientPhone,
           recipientAddress: data.recipientAddress,
-          recipientCity: data.recipientCity,
-          recipientRegion: data.recipientRegion,
-          recipientLandmark: data.recipientLandmark || "",
+          recipientCity: data.recipientAddress?.split(',').pop()?.trim() || "",
+          recipientRegion: "",
+          recipientLandmark: "",
+          deliveryLocation: data.deliveryLocation,
 
           packageDescription: data.packageDescription || "Colis",
           packageWeight: data.weight || 0,
@@ -240,13 +257,38 @@ export default function DeliveryDetailsPage() {
           </div>
         </div>
 
+        {/* Map */}
+        {(delivery.pickupLocation || delivery.deliveryLocation) && (
+          <div className="card">
+            <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
+              <MapPin className="w-5 h-5 text-primary" />
+              Carte de navigation
+            </h2>
+            <DeliveryMap
+              pickupLocation={delivery.pickupLocation}
+              deliveryLocation={delivery.deliveryLocation}
+              className="h-[400px]"
+            />
+            <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                <span className="text-text-muted">Récupération</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                <span className="text-text-muted">Livraison</span>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Navigation Button */}
         <button
           onClick={openNavigation}
           className="btn-primary w-full flex items-center justify-center gap-2 text-lg py-4"
         >
           <Navigation className="w-6 h-6" />
-          Ouvrir la navigation
+          Ouvrir Google Maps
         </button>
 
         {/* Route Summary */}

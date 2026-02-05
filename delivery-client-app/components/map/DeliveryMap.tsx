@@ -214,9 +214,13 @@ export function DeliveryMap({
     }
 
     // Draw route line
-    if (routePoints && routePoints.length > 0 && routePoints.every(p => p && p.length === 2 && p[0] != null && p[1] != null)) {
-      // Itinéraire réel calculé
-      L.polyline(routePoints, {
+    const validPoints = routePoints && routePoints.length > 0
+      ? routePoints.filter(p => p && p.length === 2 && typeof p[0] === 'number' && typeof p[1] === 'number')
+      : [];
+
+    if (validPoints.length >= 2) {
+      // Itinéraire réel calculé (au moins 2 points)
+      L.polyline(validPoints as L.LatLngExpression[], {
         color: "#f97316",
         weight: 6,
         opacity: 0.9,
@@ -225,7 +229,18 @@ export function DeliveryMap({
         className: 'route-line-dynamic'
       }).addTo(map);
 
-      routePoints.forEach(p => bounds.push(p));
+      validPoints.forEach(p => bounds.push(p as L.LatLngExpression));
+    } else if (validPoints.length === 1) {
+      // Cas d'un point unique (ex: départ == arrivée)
+      L.circleMarker(validPoints[0] as L.LatLngExpression, {
+        radius: 8,
+        fillColor: "#f97316",
+        color: "#fff",
+        weight: 2,
+        opacity: 1,
+        fillOpacity: 1
+      }).addTo(map);
+      bounds.push(validPoints[0] as L.LatLngExpression);
     } else if (pickupLocation?.latitude != null && pickupLocation?.longitude != null &&
       deliveryLocation?.latitude != null && deliveryLocation?.longitude != null) {
       // Ligne directe (fallback)

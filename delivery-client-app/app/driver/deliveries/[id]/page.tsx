@@ -318,7 +318,7 @@ export default function DeliveryDetailsPage() {
         </div>
 
         {/* Map Section */}
-        <div className={isFullScreen ? "fixed inset-0 z-[100] m-0 p-0 overflow-hidden bg-black" : "card"} id="map-section">
+        <div className={isFullScreen ? "fixed inset-0 z-[100] m-0 p-0 overflow-hidden bg-black" : "card overflow-hidden"} id="map-section">
           {/* Header & Controls Overlay (Only shown when not full screen or as floaters) */}
           {!isFullScreen && (
             <div className="flex items-center justify-between mb-4 px-2">

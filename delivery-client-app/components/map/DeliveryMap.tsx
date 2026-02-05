@@ -235,7 +235,6 @@ export function DeliveryMap({
     <div
       ref={mapContainerRef}
       className={`w-full h-full rounded-xl overflow-hidden ${className}`}
-      style={{ minHeight: "400px" }}
     />
   );
 }

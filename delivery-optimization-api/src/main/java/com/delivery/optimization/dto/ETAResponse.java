@@ -13,7 +13,7 @@ public class ETAResponse {
     private String etaMin;
     private String etaMax;
     private double confidence;
-    private double remainingDistance; // in meters
+    private double remainingDistance; // in kilometers
     private KalmanStateDTO kalmanState;
 
     @Data

@@ -85,23 +85,39 @@ public class ETAService {
                                                                 List<Arc> allArcs = tuple.getT1();
                                                                 double pathBias = 1.0;
                                                                 try {
-                                                                        // Calculer le facteur de ralentissement combiné basé sur TOUS les critères
+                                                                        // Calculer le facteur de ralentissement combiné
+                                                                        // basé sur TOUS les critères
                                                                         pathBias = allArcs.stream()
                                                                                         .mapToDouble(arc -> {
-                                                                                                double traffic = (arc.getTrafficFactor() != null && arc.getTrafficFactor() > 1.0)
-                                                                                                        ? arc.getTrafficFactor()
-                                                                                                        : 1.0;
-                                                                                                double penibility = (arc.getPenibility() != null && arc.getPenibility() > 0)
-                                                                                                        ? (1.0 + arc.getPenibility() * 0.1)
-                                                                                                        : 1.0;
-                                                                                                double weather = (arc.getWeatherImpact() != null && arc.getWeatherImpact() > 0)
-                                                                                                        ? (1.0 + arc.getWeatherImpact() * 0.15)
-                                                                                                        : 1.0;
+                                                                                                double traffic = (arc
+                                                                                                                .getTrafficFactor() != null
+                                                                                                                && arc.getTrafficFactor() > 1.0)
+                                                                                                                                ? arc.getTrafficFactor()
+                                                                                                                                : 1.0;
+                                                                                                double penibility = (arc
+                                                                                                                .getPenibility() != null
+                                                                                                                && arc.getPenibility() > 0)
+                                                                                                                                ? (1.0 + arc.getPenibility()
+                                                                                                                                                * 0.1)
+                                                                                                                                : 1.0;
+                                                                                                double weather = (arc
+                                                                                                                .getWeatherImpact() != null
+                                                                                                                && arc.getWeatherImpact() > 0)
+                                                                                                                                ? (1.0 + arc.getWeatherImpact()
+                                                                                                                                                * 0.15)
+                                                                                                                                : 1.0;
 
-                                                                                                // Facteur combiné: trafic * pénibilité * météo
-                                                                                                // Exemple: trafic=1.5, penibility=2.0, weather=1.0
-                                                                                                // => facteur = 1.5 * 1.2 * 1.0 = 1.8 (80% plus lent)
-                                                                                                return traffic * penibility * weather;
+                                                                                                // Facteur combiné:
+                                                                                                // trafic * pénibilité *
+                                                                                                // météo
+                                                                                                // Exemple: trafic=1.5,
+                                                                                                // penibility=2.0,
+                                                                                                // weather=1.0
+                                                                                                // => facteur = 1.5 *
+                                                                                                // 1.2 * 1.0 = 1.8 (80%
+                                                                                                // plus lent)
+                                                                                                return traffic * penibility
+                                                                                                                * weather;
                                                                                         })
                                                                                         .max()
                                                                                         .orElse(1.0);
@@ -111,7 +127,7 @@ public class ETAService {
 
                                                                 double remainingRatio = Math.max(0,
                                                                                 1.0 - newState.getDistanceCovered());
-                                                                double remainingDistMeters = newState.getTotalDistance()
+                                                                double remainingDist = newState.getTotalDistance()
                                                                                 * remainingRatio;
 
                                                                 double realSpeedMs;
@@ -139,7 +155,7 @@ public class ETAService {
                                                                                                         : 8.33);
                                                                 }
 
-                                                                long secondsLeft = (long) ((remainingDistMeters
+                                                                long secondsLeft = (long) ((remainingDist
                                                                                 / realSpeedMs) * pathBias);
                                                                 Instant eta = Instant.now().plusSeconds(secondsLeft);
 
@@ -151,7 +167,7 @@ public class ETAService {
                                                                                                 .format(eta.plusSeconds(
                                                                                                                 90)))
                                                                                 .confidence(confidence)
-                                                                                .remainingDistance(remainingDistMeters)
+                                                                                .remainingDistance(remainingDist)
                                                                                 .kalmanState(ETAResponse.KalmanStateDTO
                                                                                                 .builder()
                                                                                                 .distanceCovered(
@@ -164,7 +180,8 @@ public class ETAService {
                                                                                 .build();
 
                                                                 try {
-                                                                        // Broadcast ETA update to specific delivery topic
+                                                                        // Broadcast ETA update to specific delivery
+                                                                        // topic
                                                                         webSocketBroadcaster.sendToTopic(
                                                                                         "/topic/tracking/" + deliveryId,
                                                                                         response);
@@ -174,7 +191,8 @@ public class ETAService {
                                                                                                         "data",
                                                                                                         response));
                                                                 } catch (Exception ex) {
-                                                                        log.warn("WS broadcast failure: {}", ex.getMessage());
+                                                                        log.warn("WS broadcast failure: {}",
+                                                                                        ex.getMessage());
                                                                 }
                                                                 return response;
                                                         });
@@ -195,18 +213,27 @@ public class ETAService {
                                                         List<Arc> allArcs = tuple.getT1();
                                                         double confidence = Math.max(0,
                                                                         1.0 - state.getVariance() / 3.3);
-                                                        // Calculer le facteur de ralentissement combiné basé sur TOUS les critères
+                                                        // Calculer le facteur de ralentissement combiné basé sur TOUS
+                                                        // les critères
                                                         double pathBias = allArcs.stream()
                                                                         .mapToDouble(arc -> {
-                                                                                double traffic = (arc.getTrafficFactor() != null && arc.getTrafficFactor() > 1.0)
-                                                                                        ? arc.getTrafficFactor()
-                                                                                        : 1.0;
-                                                                                double penibility = (arc.getPenibility() != null && arc.getPenibility() > 0)
-                                                                                        ? (1.0 + arc.getPenibility() * 0.1)
-                                                                                        : 1.0;
-                                                                                double weather = (arc.getWeatherImpact() != null && arc.getWeatherImpact() > 0)
-                                                                                        ? (1.0 + arc.getWeatherImpact() * 0.15)
-                                                                                        : 1.0;
+                                                                                double traffic = (arc
+                                                                                                .getTrafficFactor() != null
+                                                                                                && arc.getTrafficFactor() > 1.0)
+                                                                                                                ? arc.getTrafficFactor()
+                                                                                                                : 1.0;
+                                                                                double penibility = (arc
+                                                                                                .getPenibility() != null
+                                                                                                && arc.getPenibility() > 0)
+                                                                                                                ? (1.0 + arc.getPenibility()
+                                                                                                                                * 0.1)
+                                                                                                                : 1.0;
+                                                                                double weather = (arc
+                                                                                                .getWeatherImpact() != null
+                                                                                                && arc.getWeatherImpact() > 0)
+                                                                                                                ? (1.0 + arc.getWeatherImpact()
+                                                                                                                                * 0.15)
+                                                                                                                : 1.0;
                                                                                 return traffic * penibility * weather;
                                                                         })
                                                                         .max()
@@ -214,11 +241,11 @@ public class ETAService {
 
                                                         double remainingRatio = Math.max(0,
                                                                         1.0 - state.getDistanceCovered());
-                                                        double remainingDistMeters = state.getTotalDistance()
+                                                        double remainingDist = state.getTotalDistance()
                                                                         * remainingRatio;
                                                         double speedMs = Math.max(1.0, state.getEstimatedSpeed() / 3.6);
 
-                                                        long secondsLeft = (long) ((remainingDistMeters / speedMs)
+                                                        long secondsLeft = (long) ((remainingDist * 1000.0 / speedMs)
                                                                         * pathBias);
                                                         Instant eta = Instant.now().plusSeconds(secondsLeft);
 
@@ -228,7 +255,7 @@ public class ETAService {
                                                                         .etaMax(DateTimeFormatter.ISO_INSTANT
                                                                                         .format(eta.plusSeconds(90)))
                                                                         .confidence(confidence)
-                                                                        .remainingDistance(remainingDistMeters)
+                                                                        .remainingDistance(remainingDist)
                                                                         .kalmanState(ETAResponse.KalmanStateDTO
                                                                                         .builder()
                                                                                         .distanceCovered(state
@@ -247,7 +274,7 @@ public class ETAService {
                                 .deliveryId(deliveryId)
                                 .timestamp(Instant.now())
                                 .distanceCovered(0.0)
-                                .totalDistance(1000.0)
+                                .totalDistance(5.0) // Valeur par défaut en KM
                                 .estimatedSpeed(30.0)
                                 .trafficBias(1.0)
                                 .variance(1.0)

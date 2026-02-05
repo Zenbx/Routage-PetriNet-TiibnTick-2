@@ -358,19 +358,6 @@ public class ClientController {
                         return Mono.empty();
                 }
 
-                // Cas d'un point relais (RELAY_XXX)
-                if (locationId.startsWith("RELAY_")) {
-                        return nodeRepository.findById(locationId)
-                                        .map(node -> LocationDTO.builder()
-                                                        .latitude(node.getLatitude())
-                                                        .longitude(node.getLongitude())
-                                                        .address(node.getName())
-                                                        .build())
-                                        .doOnError(e -> log.warn("Failed to resolve relay coordinates for {}: {}",
-                                                        locationId, e.getMessage()))
-                                        .onErrorResume(e -> Mono.empty());
-                }
-
                 // Cas de coordonnées directes "lat,lng"
                 try {
                         String[] parts = locationId.split(",");
@@ -384,9 +371,18 @@ public class ClientController {
                                                 .build());
                         }
                 } catch (Exception e) {
-                        log.warn("Failed to parse coordinates: {}", locationId);
+                        log.debug("Not direct coordinates: {}", locationId);
                 }
 
-                return Mono.empty();
+                // Cas d'un ID de noeud (Point Relais ou autre noeud du graphe)
+                return nodeRepository.findById(locationId)
+                                .map(node -> LocationDTO.builder()
+                                                .latitude(node.getLatitude())
+                                                .longitude(node.getLongitude())
+                                                .address(node.getName())
+                                                .build())
+                                .doOnError(e -> log.warn("Failed to resolve node {} from repository: {}",
+                                                locationId, e.getMessage()))
+                                .onErrorResume(e -> Mono.empty());
         }
 }

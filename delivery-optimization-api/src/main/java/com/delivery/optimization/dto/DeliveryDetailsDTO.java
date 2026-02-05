@@ -56,6 +56,7 @@ public class DeliveryDetailsDTO {
 
     // Pricing
     private Double price;
+    private Double distance;
 
     // Driver info
     private String driverId;

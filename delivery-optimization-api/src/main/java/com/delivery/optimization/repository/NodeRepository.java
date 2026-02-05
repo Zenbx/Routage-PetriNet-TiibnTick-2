@@ -5,6 +5,7 @@ import org.springframework.data.r2dbc.repository.Query;
 import org.springframework.data.repository.reactive.ReactiveCrudRepository;
 import org.springframework.stereotype.Repository;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 @Repository
 public interface NodeRepository extends ReactiveCrudRepository<Node, String> {
@@ -12,4 +13,6 @@ public interface NodeRepository extends ReactiveCrudRepository<Node, String> {
 
     @Query("SELECT * FROM nodes WHERE type = 'RELAY' AND (capacity - COALESCE(current_occupancy, 0)) > 0")
     Flux<Node> findAvailableRelays();
+
+    Mono<Node> findFirstByNameContainingIgnoreCase(String name);
 }

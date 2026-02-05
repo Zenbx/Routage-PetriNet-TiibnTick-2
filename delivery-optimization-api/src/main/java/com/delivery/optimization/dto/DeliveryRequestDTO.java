@@ -33,7 +33,7 @@ public class DeliveryRequestDTO {
     @NotNull(message = "Les informations du colis sont obligatoires")
     @Valid
     @JsonProperty("package_")
-    @JsonAlias({"package"})
+    @JsonAlias({ "package" })
     private PackageInfoDTO packageInfo;
 
     /**
@@ -46,4 +46,14 @@ public class DeliveryRequestDTO {
      * Instructions spéciales pour la livraison (optionnel)
      */
     private String specialInstructions;
+
+    /**
+     * Distance calculée par le frontend (km)
+     */
+    private Double distance;
+
+    /**
+     * Prix calculé par le frontend (FCFA)
+     */
+    private Double price;
 }

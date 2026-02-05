@@ -58,6 +58,7 @@ public class Delivery implements Persistable<String> {
     private Instant acceptedAt; // Quand le livreur a accepté
     private Instant pickedUpAt; // Quand le colis a été récupéré
     private Instant deliveredAt; // Quand le colis a été livré
+    private Double distance; // Distance réelle en km
 
     // Pricing
     private Double price; // Prix de la livraison

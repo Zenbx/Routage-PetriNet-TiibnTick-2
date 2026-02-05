@@ -20,7 +20,8 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * Contrôleur pour les clients (création de demandes de livraison et suivi public)
+ * Contrôleur pour les clients (création de demandes de livraison et suivi
+ * public)
  */
 @RestController
 @RequestMapping("/api/v1/client")
@@ -37,13 +38,9 @@ public class ClientController {
      * Créer une nouvelle demande de livraison
      */
     @PostMapping("/delivery/request")
-    @Operation(
-        summary = "Créer demande de livraison",
-        description = "Soumet une nouvelle demande de livraison. Retourne un code de tracking unique pour le suivi."
-    )
+    @Operation(summary = "Créer demande de livraison", description = "Soumet une nouvelle demande de livraison. Retourne un code de tracking unique pour le suivi.")
     public Mono<DeliveryResponseDTO> createDeliveryRequest(
-            @Valid @RequestBody DeliveryRequestDTO request
-    ) {
+            @Valid @RequestBody DeliveryRequestDTO request) {
         log.info("Creating new delivery request from {} to {}",
                 request.getSender().getName(),
                 request.getRecipient().getName());
@@ -54,7 +51,7 @@ public class ClientController {
                     // Créer la livraison
                     Delivery delivery = Delivery.builder()
                             .id(UUID.randomUUID().toString())
-                            .newEntity(true)  // Marquer comme nouvelle entité pour Spring Data R2DBC
+                            .newEntity(true) // Marquer comme nouvelle entité pour Spring Data R2DBC
                             .trackingCode(trackingCode)
                             .status(Delivery.DeliveryStatus.PENDING)
                             .createdAt(Instant.now())
@@ -89,8 +86,11 @@ public class ClientController {
                             .pickupNodeId(null)
                             .dropoffNodeId(null)
 
-                            // Prix calculé (simplifié pour l'instant, à améliorer)
-                            .price(calculateEstimatedPrice(request))
+                            // Distance (km)
+                            .distance(request.getDistance())
+
+                            // Prix calculé (priorité au frontend, sinon fallback)
+                            .price(request.getPrice() != null ? request.getPrice() : calculateEstimatedPrice(request))
                             .build();
 
                     return deliveryRepository.save(delivery);
@@ -110,21 +110,15 @@ public class ClientController {
      * Suivi public par code de tracking
      */
     @GetMapping("/tracking/{trackingCode}")
-    @Operation(
-        summary = "Suivi public par code",
-        description = "Permet à n'importe qui de suivre une livraison avec son code de tracking"
-    )
+    @Operation(summary = "Suivi public par code", description = "Permet à n'importe qui de suivre une livraison avec son code de tracking")
     public Mono<TrackingInfoDTO> trackDelivery(
-            @Parameter(description = "Code de tracking (ex: TRK-ABCD123EF)")
-            @PathVariable String trackingCode
-    ) {
+            @Parameter(description = "Code de tracking (ex: TRK-ABCD123EF)") @PathVariable String trackingCode) {
         log.info("Tracking delivery by code: {}", trackingCode);
 
         return deliveryRepository.findByTrackingCode(trackingCode)
                 .switchIfEmpty(Mono.error(new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
-                        "Aucune livraison trouvée avec ce code de tracking"
-                )))
+                        "Aucune livraison trouvée avec ce code de tracking")))
                 .map(this::mapToTrackingDTO)
                 .doOnSuccess(tracking -> log.info("Retrieved tracking info for {}", trackingCode))
                 .doOnError(error -> log.error("Failed to track delivery {}: {}", trackingCode, error.getMessage()));
@@ -143,7 +137,8 @@ public class ClientController {
 
         // Majoration pour livraison à domicile vs point relais
         double deliveryTypeSurcharge = request.getRecipient().getDeliveryType() == Delivery.DeliveryType.HOME
-                ? 3.0 : 0.0;
+                ? 3.0
+                : 0.0;
 
         return basePrice + weightSurcharge + deliveryTypeSurcharge;
     }
@@ -159,6 +154,7 @@ public class ClientController {
                 .estimatedPrice(delivery.getPrice())
                 .estimatedDeliveryTime(delivery.getDeadline())
                 .createdAt(delivery.getCreatedAt())
+                .distance(delivery.getDistance())
                 .sender(SenderInfoDTO.builder()
                         .name(delivery.getSenderName())
                         .phone(delivery.getSenderPhone())

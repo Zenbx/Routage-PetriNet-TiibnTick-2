@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { Route, MapPin, Clock, Calendar } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Route, MapPin, Clock, Calendar, Loader2 } from "lucide-react";
+import { api, formatETA } from "@/lib/api";
 
 interface TrajetStepProps {
   onNext: (data: any) => void;
@@ -15,7 +16,48 @@ export function TrajetStep({ onNext, onBack, senderData, recipientData }: Trajet
     preferredDate: "",
     preferredTime: "morning",
     notes: "",
+    distance: 0,
+    duration: 0,
   });
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const calculateRoute = async () => {
+      if (!senderData?.city || !recipientData?.city) return;
+
+      setIsLoading(true);
+      setError(null);
+      try {
+        // 1. Trouver les nodes pour les villes
+        const originNode = await api.findNodeByName(senderData.city);
+        const destNode = await api.findNodeByName(recipientData.city);
+
+        if (!originNode || !destNode) {
+          throw new Error("Impossible de localiser les villes dans notre réseau routier");
+        }
+
+        // 2. Calculer le plus court chemin
+        const result = await api.findShortestPath(originNode.id, destNode.id);
+
+        if (result) {
+          setFormData(prev => ({
+            ...prev,
+            distance: result.distance,
+            duration: result.estimatedTime
+          }));
+        }
+      } catch (err: any) {
+        console.error("Erreur de calcul d'itinéraire:", err);
+        setError(err.message || "Erreur lors du calcul de l'itinéraire");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    calculateRoute();
+  }, [senderData?.city, recipientData?.city]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,11 +117,33 @@ export function TrajetStep({ onNext, onBack, senderData, recipientData }: Trajet
             <div className="mt-4 pt-4 border-t border-border grid grid-cols-2 gap-4 text-sm">
               <div>
                 <p className="text-text-muted">Distance estimée</p>
-                <p className="font-bold text-primary">En cours de calcul...</p>
+                {isLoading ? (
+                  <div className="flex items-center gap-2 text-primary animate-pulse">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Calcul...</span>
+                  </div>
+                ) : error ? (
+                  <p className="font-bold text-red-500 text-xs">{error}</p>
+                ) : (
+                  <p className="font-bold text-primary">
+                    {formData.distance > 0 ? `${formData.distance.toFixed(1)} km` : "Non disponible"}
+                  </p>
+                )}
               </div>
               <div>
                 <p className="text-text-muted">Durée estimée</p>
-                <p className="font-bold text-primary">En cours de calcul...</p>
+                {isLoading ? (
+                  <div className="flex items-center gap-2 text-primary animate-pulse">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Calcul...</span>
+                  </div>
+                ) : error ? (
+                  <p className="font-bold text-red-500 text-xs">-</p>
+                ) : (
+                  <p className="font-bold text-primary">
+                    {formData.duration > 0 ? formatETA(formData.duration * 60) : "Non disponible"}
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -111,11 +175,10 @@ export function TrajetStep({ onNext, onBack, senderData, recipientData }: Trajet
                   key={slot.id}
                   type="button"
                   onClick={() => setFormData({ ...formData, preferredTime: slot.id })}
-                  className={`p-4 rounded-xl border-2 transition-all ${
-                    formData.preferredTime === slot.id
-                      ? "bg-primary/10 border-primary"
-                      : "bg-background-card border-border hover:border-border-light"
-                  }`}
+                  className={`p-4 rounded-xl border-2 transition-all ${formData.preferredTime === slot.id
+                    ? "bg-primary/10 border-primary"
+                    : "bg-background-card border-border hover:border-border-light"
+                    }`}
                 >
                   <div className="font-bold text-sm">{slot.label}</div>
                   <div className="text-xs text-text-muted mt-1">{slot.time}</div>

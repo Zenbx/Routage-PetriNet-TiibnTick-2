@@ -32,6 +32,8 @@ export interface DeliveryRequest {
   };
   preferredDeadline?: string;
   specialInstructions?: string;
+  distance?: number;
+  price?: number;
 }
 
 export interface DeliveryResponse {
@@ -41,6 +43,7 @@ export interface DeliveryResponse {
   createdAt: string;
   estimatedDelivery?: string;
   price: number;
+  distance?: number;
 }
 
 export interface TrackingResponse {
@@ -161,6 +164,12 @@ class DeliveryAPI {
 
   async getDelivery(id: string): Promise<any> {
     return this.request<any>(`/v1/delivery/${id}`, {
+      method: "GET",
+    });
+  }
+
+  async getDeliveryFeed(): Promise<any[]> {
+    return this.request<any[]>("/v1/delivery-driver/feed", {
       method: "GET",
     });
   }
@@ -443,9 +452,25 @@ class DeliveryAPI {
   }
 
   async findShortestPath(originId: string, destinationId: string): Promise<any> {
-    return this.request<any>("/graph/shortest-path", {
+    return this.request<any>("/v1/routing/shortest-path", {
       method: "POST",
-      body: JSON.stringify({ originId, destinationId }),
+      body: JSON.stringify({
+        origin: originId,
+        destination: destinationId,
+        costWeights: {
+          alpha: 1.0,
+          beta: 1.0,
+          gamma: 1.0,
+          delta: 1.0,
+          eta: 1.0
+        }
+      }),
+    });
+  }
+
+  async findNodeByName(name: string): Promise<any> {
+    return this.request<any>(`/v1/graph/nodes/search?name=${encodeURIComponent(name)}`, {
+      method: "GET",
     });
   }
 }

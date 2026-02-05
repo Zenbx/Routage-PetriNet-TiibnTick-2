@@ -24,6 +24,7 @@ public class DeliveryResponseDTO {
     private Double estimatedPrice;
     private Instant estimatedDeliveryTime;
     private Instant createdAt;
+    private Double distance;
 
     private SenderInfoDTO sender;
     private RecipientInfoDTO recipient;

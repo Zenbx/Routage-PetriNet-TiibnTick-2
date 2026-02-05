@@ -57,13 +57,21 @@ export default function DepositPage() {
     console.log("Formulaire complet:", completeData);
 
     try {
-      // Calculer le prix total
-      let totalPrice = 0;
-      if (completeData.package?.fragile) totalPrice += 1200;
-      if (completeData.package?.perishable) totalPrice += 800;
-      if (completeData.package?.liquid) totalPrice += 500;
-      if (completeData.package?.homePickup) totalPrice += 1000;
-      if (completeData.package?.homeDelivery) totalPrice += 1000;
+      // Calculer le prix basé sur la distance et le poids
+      const distance = completeData.trajet?.distance || 0;
+      const weight = parseFloat(completeData.package.weight) || 1;
+
+      // Formule simple: base 1500 + 100/km + 200/kg
+      let calculatedPrice = 1500;
+      if (distance > 0) calculatedPrice += distance * 100;
+      calculatedPrice += weight * 200;
+
+      // Add options surcharges
+      if (completeData.package?.fragile) calculatedPrice += 1200;
+      if (completeData.package?.perishable) calculatedPrice += 800;
+      if (completeData.package?.liquid) calculatedPrice += 500;
+      if (completeData.package?.homePickup) calculatedPrice += 1000;
+      if (completeData.package?.homeDelivery) calculatedPrice += 1000;
 
       // Préparer les données pour l'API (structure imbriquée attendue par le backend)
       const deliveryRequest = {
@@ -87,12 +95,15 @@ export default function DepositPage() {
         },
         package_: {
           description: completeData.package.designation || "Colis",
-          weight: parseFloat(completeData.package.weight) || 1,
+          weight: weight,
           length: parseFloat(completeData.package.length) || 0,
           width: parseFloat(completeData.package.width) || 0,
           height: parseFloat(completeData.package.height) || 0,
         },
         specialInstructions: completeData.trajet?.notes || "",
+        distance: distance,
+        price: calculatedPrice,
+        preferredDeadline: completeData.trajet?.preferredDate ? `${completeData.trajet.preferredDate}T12:00:00Z` : undefined
       };
 
       // Appel API

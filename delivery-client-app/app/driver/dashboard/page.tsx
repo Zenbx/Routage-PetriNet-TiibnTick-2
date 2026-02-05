@@ -76,22 +76,19 @@ export default function DriverDashboardPage() {
       const driver = driverAuth.getDriver();
       if (!driver) return;
 
-      // Récupérer les livraisons disponibles (PENDING - non assignées)
-      const pending = await api.getAllDeliveries({ status: 'PENDING' });
+      // Récupérer les livraisons disponibles via le feed filtré (uniquement PENDING)
+      const pending = await api.getDeliveryFeed();
 
-      // Récupérer les livraisons du livreur connecté
-      const myDeliveries = await api.getAllDeliveries({
-        driverId: driver.id,
-        status: 'ACCEPTED,PICKED_UP,IN_TRANSIT,DELIVERED'
-      });
+      // Récupérer les livraisons actives du livreur (déjà filtrées par le backend)
+      const myDeliveries = await api.getDriverDeliveries(driver.id);
 
       setAvailableDeliveries(pending.map((d: any) => ({
         id: d.id,
         trackingCode: d.trackingCode,
-        senderCity: d.sender?.address?.split(',').pop()?.trim() || d.sender?.address || 'Non défini',
-        recipientCity: d.recipient?.address?.split(',').pop()?.trim() || d.recipient?.address || 'Non défini',
+        senderCity: d.sender?.address?.split(',').shift()?.trim() || d.sender?.address || 'Non défini',
+        recipientCity: d.recipient?.address?.split(',').shift()?.trim() || d.recipient?.address || 'Non défini',
         distance: d.distance || 0,
-        price: d.estimatedPrice || 0,
+        price: d.estimatedPrice || d.price || 0,
         pickupTime: "Dès que possible",
         packageType: d.package_?.description || 'Colis',
         status: "AVAILABLE" as const
@@ -100,10 +97,10 @@ export default function DriverDashboardPage() {
       setActiveDeliveries(myDeliveries.map((d: any) => ({
         id: d.id,
         trackingCode: d.trackingCode,
-        senderCity: d.sender?.address?.split(',').pop()?.trim() || d.sender?.address || 'Non défini',
-        recipientCity: d.recipient?.address?.split(',').pop()?.trim() || d.recipient?.address || 'Non défini',
+        senderCity: d.sender?.address?.split(',').shift()?.trim() || d.sender?.address || 'Non défini',
+        recipientCity: d.recipient?.address?.split(',').shift()?.trim() || d.recipient?.address || 'Non défini',
         distance: d.distance || 0,
-        price: d.estimatedPrice || 0,
+        price: d.estimatedPrice || d.price || 0,
         pickupTime: d.status === "DELIVERED" ? "Terminé" : "En cours",
         packageType: d.package_?.description || 'Colis',
         status: d.status === "DELIVERED" ? "DELIVERED" : "IN_PROGRESS" as const
@@ -336,18 +333,16 @@ function TabButton({
   return (
     <button
       onClick={onClick}
-      className={`px-6 py-3 font-medium transition-colors relative ${
-        active
-          ? "text-primary border-b-2 border-primary"
-          : "text-text-muted hover:text-primary"
-      }`}
+      className={`px-6 py-3 font-medium transition-colors relative ${active
+        ? "text-primary border-b-2 border-primary"
+        : "text-text-muted hover:text-primary"
+        }`}
     >
       {label}
       {count > 0 && (
         <span
-          className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
-            active ? "bg-primary text-white" : "bg-background-light text-text-muted"
-          }`}
+          className={`ml-2 px-2 py-0.5 rounded-full text-xs ${active ? "bg-primary text-white" : "bg-background-light text-text-muted"
+            }`}
         >
           {count}
         </span>
@@ -389,7 +384,7 @@ function DeliveryCard({
             <span className="font-medium">{delivery.senderCity}</span>
             <span className="text-text-muted">→</span>
             <span className="font-medium">{delivery.recipientCity}</span>
-            <span className="text-text-muted">({delivery.distance} km)</span>
+            <span className="text-text-muted">({delivery.distance > 0 ? delivery.distance.toFixed(1) : "?"} km)</span>
           </div>
 
           {/* Time */}

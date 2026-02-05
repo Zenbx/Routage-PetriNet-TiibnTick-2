@@ -329,6 +329,7 @@ public class DeliveryDriverController {
                 .estimatedPrice(delivery.getPrice())
                 .estimatedDeliveryTime(delivery.getDeadline())
                 .createdAt(delivery.getCreatedAt())
+                .distance(delivery.getDistance())
                 .sender(SenderInfoDTO.builder()
                         .name(delivery.getSenderName())
                         .phone(delivery.getSenderPhone())
@@ -392,6 +393,7 @@ public class DeliveryDriverController {
 
                 // Price and driver
                 .price(delivery.getPrice())
+                .distance(delivery.getDistance())
                 .driverId(delivery.getDriverId())
                 .build();
     }

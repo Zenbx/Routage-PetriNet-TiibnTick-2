@@ -28,6 +28,8 @@ public class Driver implements Persistable<String> {
     private Double currentLatitude;
     private Double currentLongitude;
     private DriverStatus status;
+    private Double averageSpeed; // km/h
+    private Double fuelConsumption; // L/100km
     private Instant createdAt;
 
     @Transient

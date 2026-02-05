@@ -86,6 +86,7 @@ export default function DeliveryDetailsPage() {
   const [routeGeometry, setRouteGeometry] = useState<Array<[number, number]>>([]);
   const [isNavigating, setIsNavigating] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [driverSettings, setDriverSettings] = useState({ averageSpeed: 40, fuelConsumption: 8 });
 
   // Fetch delivery details and hubs
   useEffect(() => {
@@ -161,7 +162,9 @@ export default function DeliveryDetailsPage() {
         const destNode = await api.findNodeByName(delivery.recipientCity);
 
         if (originNode && destNode) {
-          const result = await api.findShortestPath(originNode.id, destNode.id);
+          // Utiliser l'id du livreur actuel (à remplacer par une vraie auth si possible, ici on utilise un ID de test ou celui en session)
+          const currentDriverId = "driver_1"; // TODO: Récupérer via auth
+          const result = await api.findShortestPath(originNode.id, destNode.id, currentDriverId);
           if (result && result.path) {
             // Transformer le path du backend en points de carte
             // Le backend retourne des Node objects dans le path
@@ -418,18 +421,31 @@ export default function DeliveryDetailsPage() {
           </div>
 
           {!isFullScreen && (
-            <div className="mt-4 grid grid-cols-3 gap-2 text-[10px]">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <span className="text-text-muted">Départ</span>
+            <div className="mt-4 flex flex-wrap gap-4 items-center justify-between">
+              <div className="flex gap-2 text-[10px]">
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  <span className="text-text-muted">Départ</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span className="text-text-muted">Arrivée</span>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span className="text-text-muted">Arrivée</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
-                <span className="text-text-muted">Point Relais</span>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => alert("Signaler Trafic (Arc ID: ...) ")}
+                  className="px-2 py-1 bg-red-500/10 text-red-500 text-[10px] rounded border border-red-500/20 hover:bg-red-500/20 transition-all font-bold"
+                >
+                  ⚠ SIGNALER TRAFIC
+                </button>
+                <button
+                  onClick={() => alert("Signaler Météo (Arc ID: ...) ")}
+                  className="px-2 py-1 bg-blue-500/10 text-blue-500 text-[10px] rounded border border-blue-500/20 hover:bg-blue-500/20 transition-all font-bold"
+                >
+                  🌧 SIGNALER MÉTÉO
+                </button>
               </div>
             </div>
           )}
@@ -569,6 +585,30 @@ export default function DeliveryDetailsPage() {
               )}
             </div>
           </div>
+        </div>
+
+        {/* Driver Vehicle Profile */}
+        <div className="card">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-bold text-lg flex items-center gap-2">
+              <Truck className="w-5 h-5 text-primary" />
+              Profil Véhicule
+            </h2>
+            <button className="text-xs text-primary font-bold hover:underline">Modifier</button>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-background-light p-3 rounded-xl">
+              <p className="text-[10px] text-text-muted uppercase mb-1">Vitesse Moyenne</p>
+              <p className="font-bold text-lg">{driverSettings.averageSpeed} <span className="text-xs font-normal">km/h</span></p>
+            </div>
+            <div className="bg-background-light p-3 rounded-xl">
+              <p className="text-[10px] text-text-muted uppercase mb-1">Consommation</p>
+              <p className="font-bold text-lg">{driverSettings.fuelConsumption} <span className="text-xs font-normal">L/100</span></p>
+            </div>
+          </div>
+          <p className="mt-3 text-[10px] text-text-muted italic">
+            Ces paramètres sont utilisés pour calculer votre ETA et vos coûts de carburant personnalisés.
+          </p>
         </div>
 
         {/* Payment Details */}

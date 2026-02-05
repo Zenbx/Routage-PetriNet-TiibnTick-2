@@ -464,20 +464,42 @@ class DeliveryAPI {
     return nodes.filter(n => n.type === 'RELAY' || n.type === 'DEPOT');
   }
 
-  async findShortestPath(originId: string, destinationId: string): Promise<any> {
+  async findShortestPath(originId: string, destinationId: string, driverId?: string): Promise<any> {
     return this.request<any>("/v1/routing/shortest-path", {
       method: "POST",
       body: JSON.stringify({
         origin: originId,
         destination: destinationId,
+        driverId: driverId,
         costWeights: {
           alpha: 1.0,
-          beta: 1.0,
-          gamma: 1.0,
-          delta: 1.0,
-          eta: 1.0
+          beta: 1.5, // Poids plus élevé pour le temps
+          gamma: 1.0, // Pénibilité
+          delta: 1.2, // Météo
+          eta: 1.0    // Carburant
         }
       }),
+    });
+  }
+
+  async updateTraffic(arcId: number, trafficFactor: number): Promise<void> {
+    return this.request<void>(`/v1/routing/arcs/${arcId}/traffic`, {
+      method: "POST",
+      body: JSON.stringify({ trafficFactor }),
+    });
+  }
+
+  async updateWeather(arcId: number, weatherImpact: number): Promise<void> {
+    return this.request<void>(`/v1/routing/arcs/${arcId}/weather`, {
+      method: "POST",
+      body: JSON.stringify({ weatherImpact }),
+    });
+  }
+
+  async updateVehicleSettings(driverId: string, settings: { averageSpeed?: number, fuelConsumption?: number }): Promise<void> {
+    return this.request<void>(`/v1/routing/driver/${driverId}/vehicle-settings`, {
+      method: "PUT",
+      body: JSON.stringify(settings),
     });
   }
 

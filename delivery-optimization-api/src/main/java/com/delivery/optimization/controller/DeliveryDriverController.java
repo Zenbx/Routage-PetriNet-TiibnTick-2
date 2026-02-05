@@ -89,9 +89,17 @@ public class DeliveryDriverController {
                 .flatMap(delivery -> {
                     // Mettre à jour le statut du livreur à BUSY
                     return driverRepository.findById(driverId)
+                            .switchIfEmpty(Mono.error(new ResponseStatusException(
+                                    HttpStatus.NOT_FOUND,
+                                    "Livreur introuvable (ID: " + driverId + ")")))
                             .flatMap(driver -> {
+                                log.info("Updating status for driver {} to BUSY", driverId);
                                 driver.setStatus(Driver.DriverStatus.BUSY);
                                 return driverRepository.save(driver);
+                            })
+                            .onErrorResume(e -> {
+                                log.error("Failed to update driver status to BUSY: {}", e.getMessage());
+                                return Mono.error(e);
                             })
                             .thenReturn(delivery);
                 })

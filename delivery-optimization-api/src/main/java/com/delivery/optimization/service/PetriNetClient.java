@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
+import java.time.Duration;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -42,8 +43,7 @@ public class PetriNetClient {
                 Map.of("id", "PICKED_UP", "colorType", "delivery"),
                 Map.of("id", "IN_TRANSIT", "colorType", "delivery"),
                 Map.of("id", "DELIVERED", "colorType", "delivery"),
-                Map.of("id", "DELAYED", "colorType", "delivery")
-        );
+                Map.of("id", "DELAYED", "colorType", "delivery"));
         netDto.put("places", places);
 
         // Transitions
@@ -52,8 +52,7 @@ public class PetriNetClient {
                 Map.of("id", "DEPART", "var", "delivery", "minTime", 0.0, "maxTime", 0.0),
                 Map.of("id", "COMPLETE", "var", "delivery", "minTime", 0.0, "maxTime", 0.0),
                 Map.of("id", "DELAY", "var", "delivery", "minTime", 0.0, "maxTime", 0.0),
-                Map.of("id", "RESUME", "var", "delivery", "minTime", 0.0, "maxTime", 0.0)
-        );
+                Map.of("id", "RESUME", "var", "delivery", "minTime", 0.0, "maxTime", 0.0));
         netDto.put("transitions", transitions);
 
         // Arcs (Connexions)
@@ -71,8 +70,7 @@ public class PetriNetClient {
                 Map.of("source", "IN_TRANSIT", "target", "DELAY", "weight", 1, "var", "delivery"),
                 Map.of("source", "DELAY", "target", "DELAYED", "weight", 1, "var", "delivery"),
                 Map.of("source", "DELAYED", "target", "RESUME", "weight", 1, "var", "delivery"),
-                Map.of("source", "RESUME", "target", "IN_TRANSIT", "weight", 1, "var", "delivery")
-        );
+                Map.of("source", "RESUME", "target", "IN_TRANSIT", "weight", 1, "var", "delivery"));
         netDto.put("arcs", arcs);
 
         // Marquage initial (token dans ASSIGNED)
@@ -85,6 +83,7 @@ public class PetriNetClient {
                 .bodyValue(netDto)
                 .retrieve()
                 .bodyToMono(String.class)
+                .timeout(Duration.ofSeconds(10))
                 .doOnSuccess(id -> log.info("Created complete Petri Net for delivery workflow: {}", id))
                 .doOnError(error -> log.error("Failed to create Petri Net: {}", error.getMessage()))
                 .onErrorResume(error -> {
@@ -105,6 +104,7 @@ public class PetriNetClient {
                 .bodyValue(binding)
                 .retrieve()
                 .toBodilessEntity()
+                .timeout(Duration.ofSeconds(10))
                 .then()
                 .doOnSuccess(v -> log.info("Fired transition {} for delivery {}", transitionId, deliveryId))
                 .doOnError(error -> log.error("Failed to fire transition {}: {}", transitionId, error.getMessage()))
@@ -123,6 +123,7 @@ public class PetriNetClient {
                 .uri("/api/nets/{id}", deliveryId)
                 .retrieve()
                 .bodyToMono(Map.class)
+                .timeout(Duration.ofSeconds(5))
                 .map(map -> (Map<String, Object>) map)
                 .doOnSuccess(state -> log.debug("Retrieved Petri Net state for delivery {}: {}", deliveryId, state))
                 .doOnError(error -> log.error("Failed to get Petri Net state: {}", error.getMessage()))
@@ -137,6 +138,7 @@ public class PetriNetClient {
                 .uri("/api/nets/health")
                 .retrieve()
                 .bodyToMono(String.class)
+                .timeout(Duration.ofSeconds(3))
                 .map(response -> "UP".equals(response))
                 .doOnSuccess(available -> log.info("Petri Net API available: {}", available))
                 .onErrorResume(error -> {

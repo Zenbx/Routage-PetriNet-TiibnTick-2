@@ -10,6 +10,8 @@ import com.delivery.optimization.repository.ArcRepository;
 import com.delivery.optimization.repository.NodeRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import com.delivery.optimization.repository.DriverRepository;
+import com.delivery.optimization.domain.Driver;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
@@ -23,6 +25,7 @@ public class ShortestPathService {
 
     private final NodeRepository nodeRepository;
     private final ArcRepository arcRepository;
+    private final DriverRepository driverRepository;
     private final AStar aStar;
 
     public Mono<ShortestPathResponse> calculateShortestPath(ShortestPathRequest request) {
@@ -57,41 +60,66 @@ public class ShortestPathService {
                     double totalWeatherCost = 0.0;
                     double totalFuelCost = 0.0;
 
-                    List<String> pathNodes = result.getPath();
+                    // Récupérer les paramètres du livreur (ou valeurs par défaut)
+                    return (request.getDriverId() != null
+                            ? driverRepository.findById(request.getDriverId())
+                            : Mono.<Driver>empty())
+                            .defaultIfEmpty(Driver.builder()
+                                    .averageSpeed(40.0)
+                                    .fuelConsumption(8.0)
+                                    .build())
+                            .flatMap(driver -> {
+                                double avgSpeed = driver.getAverageSpeed() != null ? driver.getAverageSpeed() : 40.0;
+                                double fuelCons = driver.getFuelConsumption() != null ? driver.getFuelConsumption()
+                                        : 8.0;
 
-                    for (int i = 0; i < pathNodes.size() - 1; i++) {
-                        String from = pathNodes.get(i);
-                        String to = pathNodes.get(i + 1);
-                        List<Arc> outgoing = adjacencyList.getOrDefault(from, List.of());
-                        Arc edge = outgoing.stream()
-                                .filter(a -> a.getDestinationId().equals(to))
-                                .findFirst()
-                                .orElse(null);
-                        if (edge != null) {
-                            totalDistance += edge.getDistance();
-                            estimatedTime += edge.getTravelTime()
-                                    * (edge.getTrafficFactor() != null ? edge.getTrafficFactor() : 1.0);
+                                List<String> pathNodes = result.getPath();
 
-                            totalPenibilityCost += edge.getPenibility() * weights.getGamma();
-                            totalWeatherCost += edge.getWeatherImpact() * weights.getDelta();
-                            totalFuelCost += edge.getFuelCost() * weights.getEta();
-                        }
-                    }
+                                for (int i = 0; i < pathNodes.size() - 1; i++) {
+                                    String from = pathNodes.get(i);
+                                    String to = pathNodes.get(i + 1);
+                                    List<Arc> outgoing = adjacencyList.getOrDefault(from, List.of());
+                                    Arc edge = outgoing.stream()
+                                            .filter(a -> a.getDestinationId().equals(to))
+                                            .findFirst()
+                                            .orElse(null);
+                                    if (edge != null) {
+                                        totalDistance += edge.getDistance();
 
-                    Map<String, Double> breakdown = Map.of(
-                            "Distance", totalDistance * weights.getAlpha(),
-                            "Time", estimatedTime * weights.getBeta(),
-                            "Penibility", totalPenibilityCost,
-                            "Weather", totalWeatherCost,
-                            "Fuel", totalFuelCost);
+                                        // Temps = Distance / Vitesse (converti en minutes) * Trafic
+                                        double travelTimeInHours = edge.getDistance() / avgSpeed;
+                                        double trafficMult = (edge.getTrafficFactor() != null ? edge.getTrafficFactor()
+                                                : 1.0);
+                                        estimatedTime += (travelTimeInHours * 60.0) * trafficMult;
 
-                    return Mono.just(ShortestPathResponse.builder()
-                            .path(pathNodes)
-                            .totalCost(result.getTotalCost())
-                            .costBreakdown(breakdown)
-                            .estimatedTime(estimatedTime)
-                            .distance(totalDistance)
-                            .build());
+                                        totalPenibilityCost += edge.getPenibility() * weights.getGamma();
+                                        totalWeatherCost += edge.getWeatherImpact() * weights.getDelta();
+
+                                        // Fuel Cost = (Consommation / 100) * Distance (simulé ici en "points" ou coût
+                                        // monétaire)
+                                        // On peut ajuster selon fuelCost de l'arc (pente, etc)
+                                        double baseFuel = (fuelCons / 100.0) * edge.getDistance();
+                                        totalFuelCost += (baseFuel
+                                                + (edge.getFuelCost() != null ? edge.getFuelCost() : 0))
+                                                * weights.getEta();
+                                    }
+                                }
+
+                                Map<String, Double> breakdown = Map.of(
+                                        "Distance", totalDistance * weights.getAlpha(),
+                                        "Time", estimatedTime * weights.getBeta(),
+                                        "Penibility", totalPenibilityCost,
+                                        "Weather", totalWeatherCost,
+                                        "Fuel", totalFuelCost);
+
+                                return Mono.just(ShortestPathResponse.builder()
+                                        .path(pathNodes)
+                                        .totalCost(result.getTotalCost())
+                                        .costBreakdown(breakdown)
+                                        .estimatedTime(estimatedTime)
+                                        .distance(totalDistance)
+                                        .build());
+                            });
                 });
     }
 
@@ -99,7 +127,30 @@ public class ShortestPathService {
         return arcRepository.findById(arcId)
                 .flatMap(arc -> {
                     arc.setTrafficFactor(trafficFactor);
+                    arc.setLastUpdated(java.time.Instant.now());
                     return arcRepository.save(arc);
+                })
+                .then();
+    }
+
+    public Mono<Void> updateArcWeather(Long arcId, Double weatherImpact) {
+        return arcRepository.findById(arcId)
+                .flatMap(arc -> {
+                    arc.setWeatherImpact(weatherImpact);
+                    arc.setLastUpdated(java.time.Instant.now());
+                    return arcRepository.save(arc);
+                })
+                .then();
+    }
+
+    public Mono<Void> updateDriverVehicleSettings(String driverId, Double avgSpeed, Double fuelCons) {
+        return driverRepository.findById(driverId)
+                .flatMap(driver -> {
+                    if (avgSpeed != null)
+                        driver.setAverageSpeed(avgSpeed);
+                    if (fuelCons != null)
+                        driver.setFuelConsumption(fuelCons);
+                    return driverRepository.save(driver);
                 })
                 .then();
     }

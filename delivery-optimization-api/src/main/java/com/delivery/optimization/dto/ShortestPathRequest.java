@@ -13,6 +13,7 @@ import java.time.Instant;
 public class ShortestPathRequest {
     private String origin;
     private String destination;
+    private String driverId; // ID du livreur pour récupérer ses paramètres véhicule
     private Instant timestamp;
     private CostWeights costWeights;
 

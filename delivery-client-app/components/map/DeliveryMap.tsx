@@ -208,18 +208,23 @@ export function DeliveryMap({
 
     // Draw route line
     if (routePoints.length > 0) {
+      // Itinéraire réel calculé
       L.polyline(routePoints, {
         color: "#f97316",
         weight: 6,
-        opacity: 0.8,
-        lineJoin: 'round'
+        opacity: 0.9,
+        lineJoin: 'round',
+        lineCap: 'round',
+        className: 'route-line-dynamic'
       }).addTo(map);
+
       routePoints.forEach(p => bounds.push(p));
     } else if (pickupLocation && deliveryLocation) {
+      // Ligne directe (fallback)
       L.polyline([[pickupLocation.latitude, pickupLocation.longitude], [deliveryLocation.latitude, deliveryLocation.longitude]], {
         color: "#f97316",
         weight: 4,
-        opacity: 0.6,
+        opacity: 0.5,
         dashArray: "10, 10",
       }).addTo(map);
     }

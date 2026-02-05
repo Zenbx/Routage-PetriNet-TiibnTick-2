@@ -20,6 +20,7 @@ import {
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { driverAuth } from "@/lib/driverAuth";
 import dynamic from "next/dynamic";
 
 // Dynamically import map component (client-side only)
@@ -112,15 +113,15 @@ export default function DeliveryDetailsPage() {
           senderAddress: data.senderAddress,
           senderCity: data.senderAddress?.split(',').pop()?.trim() || "",
           senderRegion: "",
-          senderLandmark: data.sender?.landmark || "",
+          senderLandmark: data.senderLandmark || "",
           pickupLocation: data.pickupLocation,
 
-          recipientName: data.recipientName || data.recipient?.name,
-          recipientPhone: data.recipientPhone || data.recipient?.phone,
-          recipientAddress: data.recipientAddress || data.recipient?.address,
-          recipientCity: (data.recipientAddress || data.recipient?.address)?.split(',').pop()?.trim() || "",
+          recipientName: data.recipientName,
+          recipientPhone: data.recipientPhone,
+          recipientAddress: data.recipientAddress,
+          recipientCity: data.recipientAddress?.split(',').pop()?.trim() || "",
           recipientRegion: "",
-          recipientLandmark: data.recipient?.landmark || "",
+          recipientLandmark: data.recipientLandmark || "",
           deliveryLocation: data.deliveryLocation,
 
           packageDescription: data.packageDescription || "Colis",
@@ -132,16 +133,35 @@ export default function DeliveryDetailsPage() {
           isPerishable: data.packageDescription?.includes("Périssable") || false,
           isInsured: true,
 
-          distance: 0,
+          distance: data.distance || 0,
           estimatedDuration: "N/A",
           price: data.price || 0,
         };
 
         setDelivery(mappedDelivery);
         setCurrentStatus(mappedDelivery.status);
+
+        // Calculate route immediately after fetching details if locations are available
+        if (data.pickupLocationId && data.deliveryLocationId) {
+          const currentDriverId = driverAuth.getDriver()?.id || "driver_1";
+          const result = await api.findShortestPath(data.pickupLocationId, data.deliveryLocationId, currentDriverId);
+
+          if (result && result.path) {
+            const points: Array<[number, number]> = result.path.map((node: any) =>
+              [node.latitude, node.longitude] as [number, number]
+            );
+            setRouteGeometry(points);
+
+            setDelivery(prev => prev ? {
+              ...prev,
+              distance: result.distance,
+              estimatedDuration: `${Math.round(result.estimatedTime || result.duration / 60)} min`
+            } : null);
+          }
+        }
       } catch (error) {
         console.error("Erreur lors de la récupération de la livraison:", error);
-        alert("Impossible de charger les détails de la livraison");
+        // alert("Impossible de charger les détails de la livraison");
       } finally {
         setLoading(false);
       }
@@ -149,49 +169,6 @@ export default function DeliveryDetailsPage() {
 
     fetchData();
   }, [deliveryId]);
-
-  // Effect to calculate real route geometry if needed
-  useEffect(() => {
-    const calculateRoute = async () => {
-      if (!delivery?.pickupLocation || !delivery?.deliveryLocation) return;
-
-      try {
-        // En mode réel, on chercherait les nodes les plus proches
-        // ici on simule ou on utilise les IDs si disponibles
-        const originNode = await api.findNodeByName(delivery.senderCity);
-        const destNode = await api.findNodeByName(delivery.recipientCity);
-
-        if (originNode && destNode) {
-          // Utiliser l'id du livreur actuel (à remplacer par une vraie auth si possible, ici on utilise un ID de test ou celui en session)
-          const currentDriverId = "driver_1"; // TODO: Récupérer via auth
-          const result = await api.findShortestPath(originNode.id, destNode.id, currentDriverId);
-          if (result && result.path) {
-            // Transformer le path du backend en points de carte
-            // Le backend retourne des Node objects dans le path
-            const points: Array<[number, number]> = result.path.map((node: any) =>
-              [node.latitude, node.longitude] as [number, number]
-            );
-            setRouteGeometry(points);
-
-            // Mettre à jour les infos de trajet
-            if (delivery) {
-              setDelivery({
-                ...delivery,
-                distance: result.distance,
-                estimatedDuration: `${Math.round(result.estimatedTime)} min`
-              });
-            }
-          }
-        }
-      } catch (err) {
-        console.error("Erreur calcul itinéraire:", err);
-      }
-    };
-
-    if (delivery && !loading) {
-      calculateRoute();
-    }
-  }, [delivery?.id, loading]);
 
   const handleStatusUpdate = async (newStatus: typeof currentStatus) => {
     if (newStatus === "DELIVERED") {

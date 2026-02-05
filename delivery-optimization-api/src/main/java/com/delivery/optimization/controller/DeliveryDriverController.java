@@ -10,6 +10,7 @@ import com.delivery.optimization.dto.RecipientInfoDTO;
 import com.delivery.optimization.dto.SenderInfoDTO;
 import com.delivery.optimization.repository.DeliveryRepository;
 import com.delivery.optimization.repository.DriverRepository;
+import com.delivery.optimization.repository.NodeRepository;
 import com.delivery.optimization.service.StateTransitionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -38,6 +39,7 @@ public class DeliveryDriverController {
 
     private final DeliveryRepository deliveryRepository;
     private final DriverRepository driverRepository;
+    private final NodeRepository nodeRepository;
     private final StateTransitionService stateTransitionService;
     private final com.delivery.optimization.service.NotificationService notificationService;
 
@@ -321,9 +323,56 @@ public class DeliveryDriverController {
                 .switchIfEmpty(Mono.error(new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
                         "Livraison non trouvée")))
-                .map(this::mapToDetailsDTO)
+                .flatMap(this::mapToDetailsDTOReactive)
                 .doOnSuccess(details -> log.info("Retrieved details for delivery {}", id))
                 .doOnError(error -> log.error("Failed to fetch delivery details: {}", error.getMessage()));
+    }
+
+    /**
+     * Mapping Delivery → DeliveryDetailsDTO de manière réactive
+     */
+    private Mono<DeliveryDetailsDTO> mapToDetailsDTOReactive(Delivery delivery) {
+        DeliveryDetailsDTO.DeliveryDetailsDTOBuilder builder = DeliveryDetailsDTO.builder()
+                .id(delivery.getId())
+                .trackingCode(delivery.getTrackingCode())
+                .status(delivery.getStatus())
+                .createdAt(delivery.getCreatedAt())
+                .acceptedAt(delivery.getAcceptedAt())
+                .pickedUpAt(delivery.getPickedUpAt())
+                .deliveredAt(delivery.getDeliveredAt())
+                .deadline(delivery.getDeadline())
+                .senderName(delivery.getSenderName())
+                .senderPhone(delivery.getSenderPhone())
+                .senderAddress(delivery.getSenderAddress())
+                .pickupType(delivery.getPickupType())
+                .pickupLocationId(delivery.getPickupLocationId())
+                .recipientName(delivery.getRecipientName())
+                .recipientPhone(delivery.getRecipientPhone())
+                .recipientAddress(delivery.getRecipientAddress())
+                .deliveryType(delivery.getDeliveryType())
+                .deliveryLocationId(delivery.getDeliveryLocationId())
+                .packageDescription(delivery.getPackageDescription())
+                .weight(delivery.getWeight())
+                .packageLength(delivery.getPackageLength())
+                .packageWidth(delivery.getPackageWidth())
+                .packageHeight(delivery.getPackageHeight())
+                .price(delivery.getPrice())
+                .distance(delivery.getDistance())
+                .driverId(delivery.getDriverId());
+
+        Mono<LocationDTO> pickupMono = resolveLocation(delivery.getPickupLocationId(), delivery.getSenderAddress())
+                .defaultIfEmpty(new LocationDTO());
+
+        Mono<LocationDTO> deliveryMono = resolveLocation(delivery.getDeliveryLocationId(),
+                delivery.getRecipientAddress())
+                .defaultIfEmpty(new LocationDTO());
+
+        return Mono.zip(pickupMono, deliveryMono)
+                .map(tuple -> {
+                    builder.pickupLocation(tuple.getT1());
+                    builder.deliveryLocation(tuple.getT2());
+                    return builder.build();
+                });
     }
 
     /**
@@ -363,92 +412,40 @@ public class DeliveryDriverController {
     }
 
     /**
-     * Mapping Delivery → DeliveryDetailsDTO (avec coordonnées GPS)
+     * Résout une localisation par son ID de manière réactive
      */
-    private DeliveryDetailsDTO mapToDetailsDTO(Delivery delivery) {
-        return DeliveryDetailsDTO.builder()
-                .id(delivery.getId())
-                .trackingCode(delivery.getTrackingCode())
-                .status(delivery.getStatus())
-                .createdAt(delivery.getCreatedAt())
-                .acceptedAt(delivery.getAcceptedAt())
-                .pickedUpAt(delivery.getPickedUpAt())
-                .deliveredAt(delivery.getDeliveredAt())
-                .deadline(delivery.getDeadline())
-
-                // Sender info
-                .senderName(delivery.getSenderName())
-                .senderPhone(delivery.getSenderPhone())
-                .senderAddress(delivery.getSenderAddress())
-                .pickupType(delivery.getPickupType())
-                .pickupLocationId(delivery.getPickupLocationId())
-                .pickupLocation(parseLocation(delivery.getPickupLocationId(), delivery.getSenderAddress()))
-
-                // Recipient info
-                .recipientName(delivery.getRecipientName())
-                .recipientPhone(delivery.getRecipientPhone())
-                .recipientAddress(delivery.getRecipientAddress())
-                .deliveryType(delivery.getDeliveryType())
-                .deliveryLocationId(delivery.getDeliveryLocationId())
-                .deliveryLocation(parseLocation(delivery.getDeliveryLocationId(), delivery.getRecipientAddress()))
-
-                // Package info
-                .packageDescription(delivery.getPackageDescription())
-                .weight(delivery.getWeight())
-                .packageLength(delivery.getPackageLength())
-                .packageWidth(delivery.getPackageWidth())
-                .packageHeight(delivery.getPackageHeight())
-
-                // Price and driver
-                .price(delivery.getPrice())
-                .distance(delivery.getDistance())
-                .driverId(delivery.getDriverId())
-                .build();
-    }
-
-    /**
-     * Parse une chaîne de coordonnées au format "lat,lng" en LocationDTO
-     */
-    private LocationDTO parseLocation(String locationId, String address) {
-        // Vérifier que locationId n'est pas null ou vide
-        if (locationId == null || locationId.trim().isEmpty()) {
-            log.debug("Location ID is null or empty, returning null");
-            return null;
+    private Mono<LocationDTO> resolveLocation(String locationId, String address) {
+        if (locationId == null || locationId.isEmpty()) {
+            return Mono.empty();
         }
 
-        // Si c'est un point relais, on n'a pas les coordonnées pour l'instant
-        if (locationId.startsWith("RELAY_") || locationId.contains("_HOME")) {
-            log.debug("Location ID is a RELAY or HOME reference: {}, returning null", locationId);
-            return null;
-        }
-
-        // Parser le format "lat,lng"
+        // Cas de coordonnées directes "lat,lng"
         try {
-            String[] parts = locationId.split(",");
-            if (parts.length == 2) {
-                double latitude = Double.parseDouble(parts[0].trim());
-                double longitude = Double.parseDouble(parts[1].trim());
-
-                // Valider les coordonnées GPS
-                if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
-                    log.warn("Invalid GPS coordinates: lat={}, lng={}", latitude, longitude);
-                    return null;
+            if (locationId.contains(",")) {
+                String[] parts = locationId.split(",");
+                if (parts.length == 2) {
+                    double latitude = Double.parseDouble(parts[0].trim());
+                    double longitude = Double.parseDouble(parts[1].trim());
+                    return Mono.just(LocationDTO.builder()
+                            .latitude(latitude)
+                            .longitude(longitude)
+                            .address(address)
+                            .build());
                 }
-
-                return LocationDTO.builder()
-                        .latitude(latitude)
-                        .longitude(longitude)
-                        .address(address)
-                        .build();
-            } else {
-                log.warn("Location ID does not match 'lat,lng' format: {}", locationId);
             }
-        } catch (NumberFormatException e) {
-            log.warn("Failed to parse location coordinates from '{}': {}", locationId, e.getMessage());
         } catch (Exception e) {
-            log.error("Unexpected error parsing location '{}': {}", locationId, e.getMessage());
+            log.debug("Not direct coordinates: {}", locationId);
         }
 
-        return null;
+        // Cas d'un ID de noeud (Point Relais ou autre noeud du graphe)
+        return nodeRepository.findById(locationId)
+                .map(node -> LocationDTO.builder()
+                        .latitude(node.getLatitude())
+                        .longitude(node.getLongitude())
+                        .address(node.getName())
+                        .build())
+                .doOnError(e -> log.warn("Failed to resolve node {} for driver: {}",
+                        locationId, e.getMessage()))
+                .onErrorResume(e -> Mono.empty());
     }
 }

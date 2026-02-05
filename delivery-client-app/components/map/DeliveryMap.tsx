@@ -94,7 +94,7 @@ export function DeliveryMap({
     const bounds: L.LatLngExpression[] = [];
 
     // Add Hub markers (Relay Points)
-    hubs.forEach((hub) => {
+    hubs.filter(hub => hub.latitude && hub.longitude).forEach((hub) => {
       const hubIcon = L.divIcon({
         html: `
           <div class="flex items-center justify-center w-8 h-8 bg-amber-100 rounded-full shadow-md border-2 border-amber-500">
@@ -120,7 +120,7 @@ export function DeliveryMap({
     });
 
     // Add pickup marker
-    if (pickupLocation) {
+    if (pickupLocation && pickupLocation.latitude && pickupLocation.longitude) {
       const pickupIcon = L.divIcon({
         html: `
           <div class="flex items-center justify-center w-10 h-10 bg-blue-500 rounded-full shadow-lg border-2 border-white">
@@ -148,7 +148,7 @@ export function DeliveryMap({
     }
 
     // Add delivery marker
-    if (deliveryLocation) {
+    if (deliveryLocation && deliveryLocation.latitude && deliveryLocation.longitude) {
       const deliveryIcon = L.divIcon({
         html: `
           <div class="flex items-center justify-center w-10 h-10 bg-green-500 rounded-full shadow-lg border-2 border-white">
@@ -176,7 +176,7 @@ export function DeliveryMap({
     }
 
     // Add driver marker
-    if (driverLocation) {
+    if (driverLocation && driverLocation.latitude && driverLocation.longitude) {
       const driverIcon = L.divIcon({
         html: `
           <div class="flex items-center justify-center w-10 h-10 bg-purple-500 rounded-full shadow-lg border-2 border-white animate-pulse">

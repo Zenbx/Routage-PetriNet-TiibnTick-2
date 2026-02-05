@@ -37,6 +37,7 @@ public class DeliveryDetailsDTO {
     private String senderAddress;
     private PickupType pickupType;
     private String pickupLocationId;
+    private String senderLandmark;
     private LocationDTO pickupLocation; // Coordonnées GPS
 
     // Recipient information
@@ -45,6 +46,7 @@ public class DeliveryDetailsDTO {
     private String recipientAddress;
     private DeliveryType deliveryType;
     private String deliveryLocationId;
+    private String recipientLandmark;
     private LocationDTO deliveryLocation; // Coordonnées GPS
 
     // Package information

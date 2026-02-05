@@ -22,9 +22,7 @@ INSERT INTO arcs (origin_id, destination_id, distance, travel_time, penibility, 
 -- Connexions Douala
 INSERT INTO arcs (origin_id, destination_id, distance, travel_time, penibility, weather_impact, fuel_cost) VALUES
 ('RELAY_DLA_AKWA', 'RELAY_DLA_BONAPRISO', 3.5, 600, 0.2, 0.1, 0.4),
-('RELAY_DLA_BONAPRISO', 'RELAY_DLA_AKWA', 3.5, 600, 0.2, 0.1, 0.4),
-('RELAY_DLA_AKWA', 'RELAY_DLA_BONANJO', 2.5, 400, 0.1, 0.0, 0.3),
-('RELAY_DLA_BONANJO', 'RELAY_DLA_AKWA', 2.5, 400, 0.1, 0.0, 0.3);
+('RELAY_DLA_BONAPRISO', 'RELAY_DLA_AKWA', 3.5, 600, 0.2, 0.1, 0.4);
 
 -- Connexion Dschang <-> Douala (via Littoral)
 INSERT INTO arcs (origin_id, destination_id, distance, travel_time, penibility, weather_impact, fuel_cost) VALUES

@@ -114,6 +114,19 @@ export function TrajetStep({ onNext, onBack, senderData, recipientData }: Trajet
                 </div>
               </div>
             </div>
+
+            {/* Service Type Summary */}
+            <div className="mt-6 flex flex-col gap-2">
+              <div className={`p-3 rounded-lg border text-xs flex items-center justify-between ${senderData?.pickupType === 'HOME' ? 'bg-green-500/10 border-green-500/20 text-green-700' : 'bg-amber-500/10 border-amber-500/20 text-amber-700'}`}>
+                <span className="font-medium">Collecte : {senderData?.pickupType === 'HOME' ? 'À Domicile (+1000 FCFA)' : 'En Point Relais (Hub)'}</span>
+                {senderData?.pickupType !== 'HOME' && <span className="text-[10px] bg-amber-500/20 px-2 py-0.5 rounded">Requis</span>}
+              </div>
+              <div className={`p-3 rounded-lg border text-xs flex items-center justify-between ${recipientData?.deliveryType === 'HOME' ? 'bg-green-500/10 border-green-500/20 text-green-700' : 'bg-amber-500/10 border-amber-500/20 text-amber-700'}`}>
+                <span className="font-medium">Livraison : {recipientData?.deliveryType === 'HOME' ? 'À Domicile (+1000 FCFA)' : 'En Point Relais (Hub)'}</span>
+                {recipientData?.deliveryType !== 'HOME' && <span className="text-[10px] bg-amber-500/20 px-2 py-0.5 rounded">Requis</span>}
+              </div>
+            </div>
+
             <div className="mt-4 pt-4 border-t border-border grid grid-cols-2 gap-4 text-sm">
               <div>
                 <p className="text-text-muted">Distance estimée</p>

@@ -24,5 +24,6 @@
     <include file="classpath:db/changelog/v1/017-create-hub-deposits-table.sql" relativeToChangelogFile="false"/>
     <include file="classpath:db/changelog/v1/018-create-notifications-table.sql" relativeToChangelogFile="false"/>
     <include file="classpath:db/changelog/v1/019-add-distance-to-deliveries.sql" relativeToChangelogFile="false"/>
+    <include file="classpath:db/changelog/v1/020-expand-relay-network.sql" relativeToChangelogFile="false"/>
 
 </databaseChangeLog>

@@ -157,8 +157,14 @@ export default function DepositPage() {
             <TrajetStep
               onNext={nextStep}
               onBack={prevStep}
-              senderData={formData.sender}
-              recipientData={formData.recipient}
+              senderData={{
+                ...formData.sender,
+                pickupType: (formData.package as any).homePickup ? 'HOME' : 'RELAY_POINT'
+              }}
+              recipientData={{
+                ...formData.recipient,
+                deliveryType: (formData.package as any).homeDelivery ? 'HOME' : 'RELAY_POINT'
+              }}
             />
           )}
           {currentStep === 5 && <SignatureStep onNext={nextStep} onBack={prevStep} />}

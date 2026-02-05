@@ -14,6 +14,8 @@ import {
   AlertCircle,
   Camera,
   FileText,
+  Truck,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -83,6 +85,7 @@ export default function DeliveryDetailsPage() {
   const [hubs, setHubs] = useState<any[]>([]);
   const [routeGeometry, setRouteGeometry] = useState<Array<[number, number]>>([]);
   const [isNavigating, setIsNavigating] = useState(false);
+  const [isFullScreen, setIsFullScreen] = useState(false);
 
   // Fetch delivery details and hubs
   useEffect(() => {
@@ -254,6 +257,10 @@ export default function DeliveryDetailsPage() {
     }
   };
 
+  const toggleFullScreen = () => {
+    setIsFullScreen(!isFullScreen);
+  };
+
   return (
     <div className="min-h-screen bg-background pb-8">
       {/* Header */}
@@ -310,55 +317,99 @@ export default function DeliveryDetailsPage() {
           </div>
         </div>
 
-        {/* Map */}
-        <div className="card" id="map-section">
-          <div className="flex items-center justify-between mb-4">
+        {/* Map Section */}
+        <div className={`card ${isFullScreen ? "fixed inset-0 z-[100] m-0 rounded-none h-screen w-screen" : ""}`} id="map-section">
+          <div className="flex items-center justify-between mb-4 px-2">
             <h2 className="font-bold text-lg flex items-center gap-2">
               <MapPin className="w-5 h-5 text-primary" />
-              Carte de navigation
+              {isFullScreen ? "Navigation Plein Écran" : "Carte de navigation"}
             </h2>
-            {isNavigating && (
-              <div className="flex gap-4 animate-in fade-in slide-in-from-top-2">
-                <div className="flex flex-col items-end">
-                  <span className="text-[10px] uppercase text-text-muted">Distance</span>
-                  <span className="font-bold text-orange-500">{delivery.distance.toFixed(1)} km</span>
+
+            <div className="flex items-center gap-4">
+              {(isNavigating || isFullScreen) && (
+                <div className="flex gap-4 animate-in fade-in slide-in-from-top-2 bg-background/80 backdrop-blur-md px-3 py-1 rounded-lg border border-border shadow-sm">
+                  <div className="flex flex-col items-end">
+                    <span className="text-[10px] uppercase text-text-muted">Reste</span>
+                    <span className="font-bold text-orange-500">{delivery.distance.toFixed(1)} km</span>
+                  </div>
+                  <div className="flex flex-col items-end">
+                    <span className="text-[10px] uppercase text-text-muted">ETA</span>
+                    <span className="font-bold text-orange-500">{delivery.estimatedDuration}</span>
+                  </div>
                 </div>
-                <div className="flex flex-col items-end">
-                  <span className="text-[10px] uppercase text-text-muted">ETA</span>
-                  <span className="font-bold text-orange-500">{delivery.estimatedDuration}</span>
+              )}
+
+              <button
+                onClick={toggleFullScreen}
+                className="p-2 rounded-lg bg-background-light hover:bg-primary/10 transition-colors"
+                title={isFullScreen ? "Réduire" : "Plein écran"}
+              >
+                {isFullScreen ? (
+                  <X className="w-5 h-5" />
+                ) : (
+                  <Truck className="w-5 h-5 text-primary" />
+                )}
+              </button>
+            </div>
+          </div>
+
+          <div className={`${isFullScreen ? "h-[calc(100vh-80px)]" : isNavigating ? "h-[500px]" : "h-[300px]"} relative transition-all duration-500`}>
+            <DeliveryMap
+              pickupLocation={delivery.pickupLocation}
+              deliveryLocation={delivery.deliveryLocation}
+              hubs={hubs}
+              routePoints={routeGeometry}
+              className="w-full h-full"
+            />
+
+            {/* Legend Overlay in Fullscreen */}
+            {isFullScreen && (
+              <div className="absolute bottom-6 left-6 z-[1000] bg-background/90 backdrop-blur-md p-4 rounded-xl border border-border shadow-xl space-y-2">
+                <p className="font-bold text-xs mb-2">Légende</p>
+                <div className="flex items-center gap-2 text-[10px]">
+                  <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                  <span>Point de départ</span>
+                </div>
+                <div className="flex items-center gap-2 text-[10px]">
+                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                  <span>Arrivée</span>
+                </div>
+                <div className="flex items-center gap-2 text-[10px]">
+                  <div className="w-3 h-3 bg-amber-500 rounded-full"></div>
+                  <span>Point Relais (Relay Point)</span>
+                </div>
+                <div className="flex items-center gap-2 text-[10px]">
+                  <div className="w-3 h-1 bg-orange-500 rounded-full"></div>
+                  <span>Itinéraire Actif</span>
                 </div>
               </div>
             )}
           </div>
-          <DeliveryMap
-            pickupLocation={delivery.pickupLocation}
-            deliveryLocation={delivery.deliveryLocation}
-            hubs={hubs}
-            routePoints={routeGeometry}
-            className={`transition-all duration-500 ${isNavigating ? "h-[500px]" : "h-[300px]"}`}
-          />
-          <div className="mt-4 grid grid-cols-3 gap-2 text-[10px]">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-              <span className="text-text-muted">Départ</span>
+
+          {!isFullScreen && (
+            <div className="mt-4 grid grid-cols-3 gap-2 text-[10px]">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                <span className="text-text-muted">Départ</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span className="text-text-muted">Arrivée</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
+                <span className="text-text-muted">Point Relais</span>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span className="text-text-muted">Arrivée</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
-              <span className="text-text-muted">Point Relais</span>
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Navigation Button */}
         <button
           onClick={toggleNavigation}
           className={`w-full flex items-center justify-center gap-2 text-lg py-4 rounded-xl font-bold transition-all ${isNavigating
-              ? "bg-orange-500 text-white shadow-lg shadow-orange-500/30 scale-[1.02]"
-              : "bg-primary text-white hover:bg-primary-light"
+            ? "bg-orange-500 text-white shadow-lg shadow-orange-500/30 scale-[1.02]"
+            : "bg-primary text-white hover:bg-primary-light"
             }`}
         >
           <Navigation className={`w-6 h-6 ${isNavigating ? "animate-pulse" : ""}`} />

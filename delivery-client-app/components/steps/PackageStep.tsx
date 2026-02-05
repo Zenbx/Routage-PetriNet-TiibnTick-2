@@ -287,6 +287,26 @@ export function PackageStep({ onNext, onBack }: PackageStepProps) {
             </div>
           </div>
 
+          {/* Info / Alert Service de Relais */}
+          {(!formData.homePickup || !formData.homeDelivery) && (
+            <div className="card bg-amber-500/5 border-amber-500/20 border animate-in fade-in slide-in-from-bottom-2">
+              <div className="flex gap-3">
+                <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0" />
+                <div className="space-y-1">
+                  <p className="font-bold text-sm text-amber-600">Information Importante</p>
+                  <ul className="text-xs text-amber-700/80 list-disc pl-4 space-y-1">
+                    {!formData.homePickup && (
+                      <li>Puisque vous ne choisissez pas la **Récupération à domicile**, vous devrez déposer le colis au **Point Relais le plus proche** (Hub).</li>
+                    )}
+                    {!formData.homeDelivery && (
+                      <li>Puisque vous ne choisissez pas la **Livraison à domicile**, le destinataire devra retirer le colis au **Point Relais le plus proche** de chez lui.</li>
+                    )}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Livraison express */}
           <div className="card space-y-4">
             <h3 className="font-bold">Livraison express</h3>

@@ -236,35 +236,62 @@ function TrackingContent() {
                 </div>
               </div>
 
-              {/* Package Info */}
-              <div className="grid grid-cols-2 gap-4 p-4 bg-background-light rounded-xl">
+              {/* Delivery Nodes Info */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-background-light rounded-xl border border-border/30">
                 <div className="flex items-start gap-3">
-                  <Package className="w-5 h-5 text-primary mt-0.5" />
-                  <div>
-                    <div className="text-text-muted text-xs">Colis</div>
-                    <div className="text-white font-medium">
-                      {trackingInfo.packageDescription}
-                    </div>
-                    <div className="text-text-muted text-xs">
-                      {trackingInfo.weight} kg
-                    </div>
+                  <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+                    <MapPin className="w-5 h-5 text-blue-500" />
                   </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <User className="w-5 h-5 text-primary mt-0.5" />
                   <div>
-                    <div className="text-text-muted text-xs">Destinataire</div>
-                    <div className="text-white font-medium">
-                      {trackingInfo.recipientName}
+                    <div className="text-text-muted text-xs uppercase tracking-wider font-bold mb-1">Point de départ</div>
+                    <div className="text-white font-medium">{trackingInfo.senderName}</div>
+                    <div className="text-text-muted text-sm mt-1">
+                      {trackingInfo.senderAddress}
+                      {(trackingInfo.senderCity || trackingInfo.senderRegion) && (
+                        <span className="block italic text-xs">
+                          {trackingInfo.senderCity}{trackingInfo.senderRegion ? `, ${trackingInfo.senderRegion}` : ""}{trackingInfo.senderCountry ? ` (${trackingInfo.senderCountry})` : ""}
+                        </span>
+                      )}
                     </div>
-                    <div className="text-text-muted text-xs">
-                      {trackingInfo.recipientAddress}
-                    </div>
-                    {trackingInfo.recipientLandmark && (
-                      <div className="text-orange-400 text-xs mt-1 italic">
-                        📍 {trackingInfo.recipientLandmark}
+                    {trackingInfo.senderLandmark && (
+                      <div className="text-blue-400 text-xs mt-1 font-medium bg-blue-400/5 py-1 px-2 rounded inline-block">
+                        Lieu-dit: {trackingInfo.senderLandmark}
                       </div>
                     )}
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center flex-shrink-0">
+                    <MapPin className="w-5 h-5 text-green-500" />
+                  </div>
+                  <div>
+                    <div className="text-text-muted text-xs uppercase tracking-wider font-bold mb-1">Point d'arrivée</div>
+                    <div className="text-white font-medium">{trackingInfo.recipientName}</div>
+                    <div className="text-text-muted text-sm mt-1">
+                      {trackingInfo.recipientAddress}
+                      {(trackingInfo.recipientCity || trackingInfo.recipientRegion) && (
+                        <span className="block italic text-xs">
+                          {trackingInfo.recipientCity}{trackingInfo.recipientRegion ? `, ${trackingInfo.recipientRegion}` : ""}{trackingInfo.recipientCountry ? ` (${trackingInfo.recipientCountry})` : ""}
+                        </span>
+                      )}
+                    </div>
+                    {trackingInfo.recipientLandmark && (
+                      <div className="text-green-400 text-xs mt-1 font-medium bg-green-400/5 py-1 px-2 rounded inline-block">
+                        Lieu-dit: {trackingInfo.recipientLandmark}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Package Content Info */}
+              <div className="p-4 bg-background-light/50 rounded-xl border border-border/20 flex items-center gap-4">
+                <Package className="w-8 h-8 text-primary opacity-50" />
+                <div>
+                  <div className="text-text-muted text-xs uppercase tracking-wider">Contenu du colis</div>
+                  <div className="text-white font-medium">
+                    {trackingInfo.packageDescription} • {trackingInfo.weight} kg
                   </div>
                 </div>
               </div>

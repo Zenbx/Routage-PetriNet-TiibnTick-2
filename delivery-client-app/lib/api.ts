@@ -55,9 +55,17 @@ export interface TrackingResponse {
   pickedUpAt?: string;
   deliveredAt?: string;
   senderName: string;
+  senderAddress: string;
+  senderLandmark?: string;
+  senderCity?: string;
+  senderRegion?: string;
+  senderCountry?: string;
   recipientName: string;
   recipientAddress: string;
   recipientLandmark?: string;
+  recipientCity?: string;
+  recipientRegion?: string;
+  recipientCountry?: string;
   estimatedDeliveryTime?: string;
   progressPercentage?: number;
   pickupLocation?: Location;

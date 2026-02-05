@@ -19,9 +19,10 @@ interface LocationPickerMapProps {
     initialLocation?: { latitude: number; longitude: number };
     onLocationSelect: (location: { latitude: number; longitude: number; address: string; city: string }) => void;
     onCancel?: () => void;
+    hubs?: any[];
 }
 
-export function LocationPickerMap({ initialLocation, onLocationSelect, onCancel }: LocationPickerMapProps) {
+export function LocationPickerMap({ initialLocation, onLocationSelect, onCancel, hubs = [] }: LocationPickerMapProps) {
     const mapRef = useRef<L.Map | null>(null);
     const markerRef = useRef<L.Marker | null>(null);
     const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -57,6 +58,24 @@ export function LocationPickerMap({ initialLocation, onLocationSelect, onCancel 
         // Handle resize
         const resizeObserver = new ResizeObserver(() => map.invalidateSize());
         resizeObserver.observe(mapContainerRef.current);
+
+        // Render hubs as markers
+        if (hubs && hubs.length > 0) {
+            const hubIcon = L.divIcon({
+                className: 'custom-div-icon',
+                html: `<div style="background-color: #f97316; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 10px rgba(249, 115, 22, 0.5);"></div>`,
+                iconSize: [12, 12],
+                iconAnchor: [6, 6]
+            });
+
+            hubs.forEach(hub => {
+                if (hub.latitude && hub.longitude) {
+                    L.marker([hub.latitude, hub.longitude], { icon: hubIcon })
+                        .addTo(map)
+                        .bindPopup(`<b style="color: #f97316;">${hub.name}</b><br/><span style="font-size: 10px;">Point Relais Disponibilité</span>`);
+                }
+            });
+        }
 
         return () => {
             resizeObserver.disconnect();

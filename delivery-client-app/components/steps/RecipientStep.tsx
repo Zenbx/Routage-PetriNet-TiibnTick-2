@@ -3,8 +3,13 @@
 import { useState, useEffect } from "react";
 import { MapPin, Globe, Map, Map as MapIcon, X } from "lucide-react";
 import { getCountries, getRegionsByCountry, getCitiesByRegion } from "@/lib/locations";
-import { LocationPickerMap } from "@/components/map/LocationPickerMap";
 import { api } from "@/lib/api";
+import dynamic from "next/dynamic";
+
+const LocationPickerMap = dynamic(
+  () => import("@/components/map/LocationPickerMap").then((mod) => mod.LocationPickerMap),
+  { ssr: false, loading: () => <div className="w-full h-full bg-black/20 animate-pulse rounded-3xl" /> }
+);
 
 interface RecipientStepProps {
   onNext: (data: any) => void;

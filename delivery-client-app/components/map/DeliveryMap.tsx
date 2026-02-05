@@ -23,7 +23,7 @@ interface DeliveryMapProps {
   pickupLocation?: Location;
   deliveryLocation?: Location;
   driverLocation?: Location;
-  hubs?: Array<{ id: string, name: string, latitude: number, longitude: number, type: string }>;
+  hubs?: Array<Location & { id?: string, name?: string, type?: string }>;
   routePoints?: Array<[number, number]>;
   className?: string;
 }
@@ -113,8 +113,8 @@ export function DeliveryMap({
         .addTo(map)
         .bindPopup(`
           <div class="p-1 text-black">
-            <div class="font-bold text-xs">🏪 Point Relais</div>
-            <div class="text-[10px] text-gray-600">${hub.name}</div>
+            <div class="font-bold text-xs">🏪 ${hub.type === 'DEPOT' ? 'Dépôt' : 'Point Relais'}</div>
+            <div class="text-[10px] text-gray-600">${hub.name || hub.id || 'Hub'}</div>
           </div>
         `);
     });

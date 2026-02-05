@@ -60,9 +60,10 @@ export interface TrackingResponse {
   recipientLandmark?: string;
   estimatedDeliveryTime?: string;
   progressPercentage?: number;
-  pickupLocation?: { latitude: number; longitude: number; address?: string };
-  deliveryLocation?: { latitude: number; longitude: number; address?: string };
-  driverLocation?: { latitude: number; longitude: number; address?: string };
+  pickupLocation?: Location;
+  deliveryLocation?: Location;
+  driverLocation?: Location;
+  hubs?: Location[];
   packageDescription: string;
   weight: number;
   // Route and ETA data

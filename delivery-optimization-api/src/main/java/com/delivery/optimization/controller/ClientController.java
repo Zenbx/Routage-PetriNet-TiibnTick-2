@@ -43,6 +43,7 @@ public class ClientController {
         private final ShortestPathService shortestPathService;
         private final ETAService etaService;
         private final NodeRepository nodeRepository;
+        private final com.delivery.optimization.repository.DriverRepository driverRepository;
 
         /**
          * Créer une nouvelle demande de livraison
@@ -235,22 +236,58 @@ public class ClientController {
                                 .packageDescription(delivery.getPackageDescription())
                                 .weight(delivery.getWeight())
                                 .estimatedDeliveryTime(delivery.getDeadline())
-                                .price(delivery.getPrice())
-                                .driverLocation(null); // TODO: Position en temps réel via WebSocket
+                                .price(delivery.getPrice());
+
+                // Coordonnées du livreur si assigné
+                Mono<LocationDTO> driverLocMono = (delivery.getDriverId() != null)
+                                ? driverRepository.findById(delivery.getDriverId())
+                                                .map(driver -> LocationDTO.builder()
+                                                                .latitude(driver.getCurrentLatitude())
+                                                                .longitude(driver.getCurrentLongitude())
+                                                                .address("Position en temps réel")
+                                                                .build())
+                                                .defaultIfEmpty(new LocationDTO())
+                                : Mono.just(new LocationDTO());
+
+                // Résolution des Hubs (Points Relais)
+                List<String> hubIds = new ArrayList<>();
+                if (delivery.getPickupLocationId() != null && delivery.getPickupLocationId().startsWith("RELAY_")) {
+                        hubIds.add(delivery.getPickupLocationId());
+                }
+                if (delivery.getDeliveryLocationId() != null && delivery.getDeliveryLocationId().startsWith("RELAY_")) {
+                        hubIds.add(delivery.getDeliveryLocationId());
+                }
+
+                Mono<List<LocationDTO>> hubsMono = Flux.fromIterable(hubIds)
+                                .flatMap(id -> nodeRepository.findById(id)
+                                                .map(node -> LocationDTO.builder()
+                                                                .latitude(node.getLatitude())
+                                                                .longitude(node.getLongitude())
+                                                                .address(node.getName())
+                                                                .build()))
+                                .collectList();
 
                 return Mono.zip(
                                 resolveLocation(delivery.getPickupLocationId(), delivery.getSenderAddress())
                                                 .defaultIfEmpty(new LocationDTO()),
                                 resolveLocation(delivery.getDeliveryLocationId(), delivery.getRecipientAddress())
-                                                .defaultIfEmpty(new LocationDTO()))
+                                                .defaultIfEmpty(new LocationDTO()),
+                                driverLocMono,
+                                hubsMono)
                                 .map(tuple -> {
                                         LocationDTO pickup = tuple.getT1();
                                         LocationDTO deliveryLoc = tuple.getT2();
+                                        LocationDTO driverLocation = tuple.getT3();
+                                        List<LocationDTO> hubs = tuple.getT4();
 
                                         if (pickup.getLatitude() != null)
                                                 builder.pickupLocation(pickup);
                                         if (deliveryLoc.getLatitude() != null)
                                                 builder.deliveryLocation(deliveryLoc);
+                                        if (driverLocation.getLatitude() != null)
+                                                builder.driverLocation(driverLocation);
+
+                                        builder.hubs(hubs);
 
                                         return builder;
                                 })

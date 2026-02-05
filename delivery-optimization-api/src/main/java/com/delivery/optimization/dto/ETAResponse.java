@@ -14,6 +14,8 @@ public class ETAResponse {
     private String etaMax;
     private double confidence;
     private double remainingDistance; // in kilometers
+    private Double currentLatitude;
+    private Double currentLongitude;
     private KalmanStateDTO kalmanState;
 
     @Data

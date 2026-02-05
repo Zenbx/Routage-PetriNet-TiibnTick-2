@@ -168,6 +168,16 @@ public class ETAService {
                                                                                                                 90)))
                                                                                 .confidence(confidence)
                                                                                 .remainingDistance(remainingDist)
+                                                                                .currentLatitude(request
+                                                                                                .getCurrentPosition() != null
+                                                                                                                ? request.getCurrentPosition()
+                                                                                                                                .getLat()
+                                                                                                                : null)
+                                                                                .currentLongitude(request
+                                                                                                .getCurrentPosition() != null
+                                                                                                                ? request.getCurrentPosition()
+                                                                                                                                .getLon()
+                                                                                                                : null)
                                                                                 .kalmanState(ETAResponse.KalmanStateDTO
                                                                                                 .builder()
                                                                                                 .distanceCovered(
@@ -211,6 +221,7 @@ public class ETAService {
                                                 deliveryRepository.findById(deliveryId).defaultIfEmpty(new Delivery()))
                                                 .map(tuple -> {
                                                         List<Arc> allArcs = tuple.getT1();
+                                                        Delivery delivery = tuple.getT2(); // Get the Delivery object
                                                         double confidence = Math.max(0,
                                                                         1.0 - state.getVariance() / 3.3);
                                                         // Calculer le facteur de ralentissement combiné basé sur TOUS
@@ -256,6 +267,9 @@ public class ETAService {
                                                                                         .format(eta.plusSeconds(90)))
                                                                         .confidence(confidence)
                                                                         .remainingDistance(remainingDist)
+                                                                        .currentLatitude(delivery.getCurrentLatitude())
+                                                                        .currentLongitude(
+                                                                                        delivery.getCurrentLongitude())
                                                                         .kalmanState(ETAResponse.KalmanStateDTO
                                                                                         .builder()
                                                                                         .distanceCovered(state

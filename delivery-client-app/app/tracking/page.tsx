@@ -34,6 +34,74 @@ function TrackingContent() {
     }
   }, [codeFromUrl]);
 
+  // WebSocket pour mises à jour en temps réel
+  useEffect(() => {
+    if (!trackingInfo || (trackingInfo.status === 'DELIVERED')) return;
+
+    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8080/api/ws";
+    let socket: WebSocket | null = null;
+    let reconnectTimeout: NodeJS.Timeout;
+
+    const connect = () => {
+      try {
+        socket = new WebSocket(wsUrl);
+
+        socket.onopen = () => {
+          console.log("WebSocket connected");
+          // On pourrait s'abonner spécifiquement ici si le backend le supportait
+        };
+
+        socket.onmessage = (event) => {
+          try {
+            const update = JSON.parse(event.data);
+            // Vérifier si la mise à jour concerne cette livraison
+            // Note: Le backend broadcast actuellement sur /topic/fleet
+            // On vérifie si l'update contient les bonnes infos
+            if (update.etaMin || update.currentLatitude) {
+              setTrackingInfo(prev => {
+                if (!prev) return prev;
+                return {
+                  ...prev,
+                  estimatedArrival: update.etaMin || prev.estimatedArrival,
+                  remainingDistance: update.remainingDistance || prev.remainingDistance,
+                  driverLocation: update.currentLatitude ? {
+                    latitude: update.currentLatitude,
+                    longitude: update.currentLongitude,
+                    address: "Position en temps réel"
+                  } : prev.driverLocation,
+                  progressPercentage: update.kalmanState?.distanceCovered
+                    ? Math.min(100, Math.round(update.kalmanState.distanceCovered * 100))
+                    : prev.progressPercentage
+                };
+              });
+            }
+          } catch (e) {
+            console.error("Error parsing WS message", e);
+          }
+        };
+
+        socket.onclose = () => {
+          console.log("WebSocket disconnected, reconnecting...");
+          reconnectTimeout = setTimeout(connect, 3000);
+        };
+
+        socket.onerror = (err) => {
+          console.error("WebSocket error", err);
+          socket?.close();
+        };
+      } catch (err) {
+        console.error("Failed to connect WebSocket", err);
+      }
+    };
+
+    connect();
+
+    return () => {
+      if (socket) socket.close();
+      clearTimeout(reconnectTimeout);
+    };
+  }, [trackingInfo?.trackingCode, trackingInfo?.status]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!trackingCode.trim()) return;
@@ -248,6 +316,7 @@ function TrackingContent() {
                   pickupLocation={trackingInfo.pickupLocation}
                   deliveryLocation={trackingInfo.deliveryLocation}
                   driverLocation={trackingInfo.driverLocation}
+                  hubs={trackingInfo.hubs}
                   routePoints={trackingInfo.routePath || []}
                   className="h-[400px]"
                 />
@@ -263,7 +332,13 @@ function TrackingContent() {
                   {trackingInfo.driverLocation && (
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 bg-purple-500 rounded-full animate-pulse"></div>
-                      <span className="text-text-muted">Livreur</span>
+                      <span className="text-text-muted">Livreur (Temps réel)</span>
+                    </div>
+                  )}
+                  {trackingInfo.hubs && trackingInfo.hubs.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 bg-amber-500 rounded-full"></div>
+                      <span className="text-text-muted">Point Relais</span>
                     </div>
                   )}
                 </div>

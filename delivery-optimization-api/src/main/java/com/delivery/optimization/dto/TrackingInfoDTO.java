@@ -54,4 +54,5 @@ public class TrackingInfoDTO {
     private Double remainingDistance; // Remaining distance to destination in km
     private String estimatedArrival; // ISO 8601 timestamp for ETA
     private Double price; // Delivery price
+    private List<LocationDTO> hubs; // Hubs (relay points) on the map
 }

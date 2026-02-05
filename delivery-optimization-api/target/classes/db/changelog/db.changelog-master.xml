@@ -31,5 +31,6 @@
     <include file="classpath:db/changelog/v1/024-sync-location-ids.sql" relativeToChangelogFile="false"/>
     <include file="classpath:db/changelog/v1/025-connect-relay-network.sql" relativeToChangelogFile="false"/>
     <include file="classpath:db/changelog/v1/026-add-arc-geometry.sql" relativeToChangelogFile="false"/>
+    <include file="classpath:db/changelog/v1/027-add-city-relay-aliases.sql" relativeToChangelogFile="false"/>
 
 </databaseChangeLog>

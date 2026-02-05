@@ -417,17 +417,18 @@ public class ClientController {
                                                                         }
                                                                 }
 
-                                                                if (!routePath.isEmpty()) {
+                                                                if (routePath.isEmpty()) {
+                                                                        log.warn("Empty route path coordinates for {}. Nodes in path: {}",
+                                                                                        delivery.getTrackingCode(),
+                                                                                        pathResponse.getPath());
+                                                                } else {
                                                                         builder.routePath(
                                                                                         routePath);
                                                                         builder.totalDistance(
                                                                                         pathResponse.getDistance());
-                                                                        log.debug("Enriched tracking info for {} with {} node-to-node points",
+                                                                        log.info("Enriched tracking info for {} with {} node-to-node points",
                                                                                         delivery.getTrackingCode(),
                                                                                         routePath.size());
-                                                                } else {
-                                                                        log.warn("Empty route path coordinates for {}",
-                                                                                        delivery.getTrackingCode());
                                                                 }
                                                                 return builder;
                                                         });

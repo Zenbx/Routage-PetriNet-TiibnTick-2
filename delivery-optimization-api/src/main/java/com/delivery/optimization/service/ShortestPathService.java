@@ -83,6 +83,13 @@ public class ShortestPathService {
                                             + " to " + request.getDestination());
                                 } else {
                                     System.out.println("DEBUG: A* found path: " + pathNodes);
+                                    // Si le trajet n'a qu'un seul point (origine == destination)
+                                    if (pathNodes.size() == 1) {
+                                        Node node = nodes.get(pathNodes.get(0));
+                                        if (node != null) {
+                                            geometryPath.add(Arrays.asList(node.getLatitude(), node.getLongitude()));
+                                        }
+                                    }
                                 }
 
                                 for (int i = 0; i < pathNodes.size() - 1; i++) {

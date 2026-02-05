@@ -15,5 +15,7 @@ public interface DeliveryMapper {
     @Mapping(target = "etaMax", ignore = true)
     @Mapping(target = "confidence", ignore = true)
     @Mapping(target = "remainingDistance", ignore = true)
+    @Mapping(target = "currentLatitude", ignore = true)
+    @Mapping(target = "currentLongitude", ignore = true)
     ETAResponse toETAResponse(KalmanState state);
 }

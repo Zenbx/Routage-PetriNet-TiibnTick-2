@@ -9,6 +9,9 @@ import com.delivery.optimization.dto.ETAUpdateRequest;
 import com.delivery.optimization.repository.ArcRepository;
 import com.delivery.optimization.repository.DeliveryRepository;
 import com.delivery.optimization.repository.KalmanStateRepository;
+import com.delivery.optimization.repository.DriverRepository;
+import com.delivery.optimization.domain.Driver;
+import com.delivery.optimization.dto.LocationDTO;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.math3.linear.ArrayRealVector;
 import org.apache.commons.math3.linear.MatrixUtils;
@@ -31,6 +34,7 @@ public class ETAService {
         private final DeliveryRepository deliveryRepository;
         private final KalmanStateRepository kalmanStateRepository;
         private final ArcRepository arcRepository;
+        private final DriverRepository driverRepository;
         private final WebSocketBroadcaster webSocketBroadcaster;
 
         // Simple cache to avoid slamming the DB with findAll() on every pulse
@@ -219,66 +223,82 @@ public class ETAService {
                                 .flatMap(state -> Mono.zip(
                                                 getArcs(),
                                                 deliveryRepository.findById(deliveryId).defaultIfEmpty(new Delivery()))
-                                                .map(tuple -> {
+                                                .flatMap(tuple -> {
                                                         List<Arc> allArcs = tuple.getT1();
-                                                        Delivery delivery = tuple.getT2(); // Get the Delivery object
-                                                        double confidence = Math.max(0,
-                                                                        1.0 - state.getVariance() / 3.3);
-                                                        // Calculer le facteur de ralentissement combiné basé sur TOUS
-                                                        // les critères
-                                                        double pathBias = allArcs.stream()
-                                                                        .mapToDouble(arc -> {
-                                                                                double traffic = (arc
-                                                                                                .getTrafficFactor() != null
-                                                                                                && arc.getTrafficFactor() > 1.0)
-                                                                                                                ? arc.getTrafficFactor()
-                                                                                                                : 1.0;
-                                                                                double penibility = (arc
-                                                                                                .getPenibility() != null
-                                                                                                && arc.getPenibility() > 0)
-                                                                                                                ? (1.0 + arc.getPenibility()
-                                                                                                                                * 0.1)
-                                                                                                                : 1.0;
-                                                                                double weather = (arc
-                                                                                                .getWeatherImpact() != null
-                                                                                                && arc.getWeatherImpact() > 0)
-                                                                                                                ? (1.0 + arc.getWeatherImpact()
-                                                                                                                                * 0.15)
-                                                                                                                : 1.0;
-                                                                                return traffic * penibility * weather;
-                                                                        })
-                                                                        .max()
-                                                                        .orElse(1.0);
+                                                        Delivery delivery = tuple.getT2();
 
-                                                        double remainingRatio = Math.max(0,
-                                                                        1.0 - state.getDistanceCovered());
-                                                        double remainingDist = state.getTotalDistance()
-                                                                        * remainingRatio;
-                                                        double speedMs = Math.max(1.0, state.getEstimatedSpeed() / 3.6);
+                                                        // Fetch driver location if available
+                                                        Mono<Driver> driverMono = (delivery.getDriverId() != null)
+                                                                        ? driverRepository
+                                                                                        .findById(delivery
+                                                                                                        .getDriverId())
+                                                                                        .defaultIfEmpty(new Driver())
+                                                                        : Mono.just(new Driver());
 
-                                                        long secondsLeft = (long) ((remainingDist * 1000.0 / speedMs)
-                                                                        * pathBias);
-                                                        Instant eta = Instant.now().plusSeconds(secondsLeft);
+                                                        return driverMono.map(driver -> {
+                                                                double confidence = Math.max(0,
+                                                                                1.0 - state.getVariance() / 3.3);
 
-                                                        return ETAResponse.builder()
-                                                                        .etaMin(DateTimeFormatter.ISO_INSTANT
-                                                                                        .format(eta.minusSeconds(30)))
-                                                                        .etaMax(DateTimeFormatter.ISO_INSTANT
-                                                                                        .format(eta.plusSeconds(90)))
-                                                                        .confidence(confidence)
-                                                                        .remainingDistance(remainingDist)
-                                                                        .currentLatitude(delivery.getCurrentLatitude())
-                                                                        .currentLongitude(
-                                                                                        delivery.getCurrentLongitude())
-                                                                        .kalmanState(ETAResponse.KalmanStateDTO
-                                                                                        .builder()
-                                                                                        .distanceCovered(state
-                                                                                                        .getDistanceCovered())
-                                                                                        .estimatedSpeed(state
-                                                                                                        .getEstimatedSpeed())
-                                                                                        .trafficBias(pathBias - 1.0)
-                                                                                        .build())
-                                                                        .build();
+                                                                double pathBias = allArcs.stream()
+                                                                                .mapToDouble(arc -> {
+                                                                                        double traffic = (arc
+                                                                                                        .getTrafficFactor() != null
+                                                                                                        && arc.getTrafficFactor() > 1.0)
+                                                                                                                        ? arc.getTrafficFactor()
+                                                                                                                        : 1.0;
+                                                                                        double penibility = (arc
+                                                                                                        .getPenibility() != null
+                                                                                                        && arc.getPenibility() > 0)
+                                                                                                                        ? (1.0 + arc.getPenibility()
+                                                                                                                                        * 0.1)
+                                                                                                                        : 1.0;
+                                                                                        double weather = (arc
+                                                                                                        .getWeatherImpact() != null
+                                                                                                        && arc.getWeatherImpact() > 0)
+                                                                                                                        ? (1.0 + arc.getWeatherImpact()
+                                                                                                                                        * 0.15)
+                                                                                                                        : 1.0;
+                                                                                        return traffic * penibility
+                                                                                                        * weather;
+                                                                                })
+                                                                                .max()
+                                                                                .orElse(1.0);
+
+                                                                double remainingRatio = Math.max(0,
+                                                                                1.0 - state.getDistanceCovered());
+                                                                double remainingDist = state.getTotalDistance()
+                                                                                * remainingRatio;
+                                                                double speedMs = Math.max(1.0,
+                                                                                state.getEstimatedSpeed() / 3.6);
+
+                                                                long secondsLeft = (long) ((remainingDist * 1000.0
+                                                                                / speedMs) * pathBias);
+                                                                Instant eta = Instant.now().plusSeconds(secondsLeft);
+
+                                                                return ETAResponse.builder()
+                                                                                .etaMin(DateTimeFormatter.ISO_INSTANT
+                                                                                                .format(eta.minusSeconds(
+                                                                                                                30)))
+                                                                                .etaMax(DateTimeFormatter.ISO_INSTANT
+                                                                                                .format(eta.plusSeconds(
+                                                                                                                90)))
+                                                                                .confidence(confidence)
+                                                                                .remainingDistance(remainingDist)
+                                                                                .currentLatitude(driver
+                                                                                                .getCurrentLatitude())
+                                                                                .currentLongitude(driver
+                                                                                                .getCurrentLongitude())
+                                                                                .kalmanState(ETAResponse.KalmanStateDTO
+                                                                                                .builder()
+                                                                                                .distanceCovered(state
+                                                                                                                .getDistanceCovered())
+                                                                                                .estimatedSpeed(state
+                                                                                                                .getEstimatedSpeed())
+                                                                                                .trafficBias(pathBias
+                                                                                                                - 1.0)
+                                                                                                .build())
+                                                                                .build();
+                                                        });
                                                 }))
                                 .switchIfEmpty(Mono.error(new RuntimeException("Delivery not found")));
         }

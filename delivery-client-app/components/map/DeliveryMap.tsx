@@ -57,20 +57,25 @@ export function DeliveryMap({
     mapRef.current = map;
 
     // Force tile refresh after a short delay
-    setTimeout(() => {
-      map.invalidateSize();
+    const tileTimeout = setTimeout(() => {
+      if (mapRef.current) {
+        mapRef.current.invalidateSize();
+      }
     }, 100);
 
     // Watch for container resizes (Full-screen toggle, etc)
     const resizeObserver = new ResizeObserver(() => {
-      if (mapRef.current) {
+      if (mapRef.current && mapContainerRef.current) {
         mapRef.current.invalidateSize();
       }
     });
 
-    resizeObserver.observe(mapContainerRef.current);
+    if (mapContainerRef.current) {
+      resizeObserver.observe(mapContainerRef.current);
+    }
 
     return () => {
+      clearTimeout(tileTimeout);
       resizeObserver.disconnect();
       if (mapRef.current) {
         mapRef.current.remove();
@@ -207,7 +212,7 @@ export function DeliveryMap({
     }
 
     // Draw route line
-    if (routePoints.length > 0) {
+    if (routePoints && routePoints.length > 0 && routePoints.every(p => p && p.length === 2 && p[0] != null && p[1] != null)) {
       // Itinéraire réel calculé
       L.polyline(routePoints, {
         color: "#f97316",
@@ -219,9 +224,13 @@ export function DeliveryMap({
       }).addTo(map);
 
       routePoints.forEach(p => bounds.push(p));
-    } else if (pickupLocation && deliveryLocation) {
+    } else if (pickupLocation?.latitude != null && pickupLocation?.longitude != null &&
+      deliveryLocation?.latitude != null && deliveryLocation?.longitude != null) {
       // Ligne directe (fallback)
-      L.polyline([[pickupLocation.latitude, pickupLocation.longitude], [deliveryLocation.latitude, deliveryLocation.longitude]], {
+      L.polyline([
+        [pickupLocation.latitude, pickupLocation.longitude],
+        [deliveryLocation.latitude, deliveryLocation.longitude]
+      ], {
         color: "#f97316",
         weight: 4,
         opacity: 0.5,

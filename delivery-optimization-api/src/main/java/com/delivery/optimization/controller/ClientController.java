@@ -116,7 +116,7 @@ public class ClientController {
                                         return stateTransitionService.initializeDeliveryWorkflow(savedDelivery.getId())
                                                         .thenReturn(savedDelivery);
                                 })
-                                .map(this::mapToResponseDTO)
+                                .flatMap(this::mapToResponseDTOReactive)
                                 .doOnSuccess(response -> log.info("Created delivery {} with tracking code {}",
                                                 response.getId(), response.getTrackingCode()))
                                 .doOnError(error -> log.error("Failed to create delivery: {}", error.getMessage()));
@@ -135,7 +135,7 @@ public class ClientController {
                                 .switchIfEmpty(Mono.error(new ResponseStatusException(
                                                 HttpStatus.NOT_FOUND,
                                                 "Aucune livraison trouvée avec ce code de tracking")))
-                                .map(this::mapToTrackingDTO)
+                                .flatMap(this::mapToTrackingDTOReactive)
                                 .doOnSuccess(tracking -> log.info("Retrieved tracking info for {}", trackingCode))
                                 .doOnError(error -> log.error("Failed to track delivery {}: {}", trackingCode,
                                                 error.getMessage()));
@@ -161,10 +161,10 @@ public class ClientController {
         }
 
         /**
-         * Mapping Delivery → DeliveryResponseDTO
+         * Mapping Delivery → DeliveryResponseDTO (réactif)
          */
-        private DeliveryResponseDTO mapToResponseDTO(Delivery delivery) {
-                return DeliveryResponseDTO.builder()
+        private Mono<DeliveryResponseDTO> mapToResponseDTOReactive(Delivery delivery) {
+                DeliveryResponseDTO.DeliveryResponseDTOBuilder builder = DeliveryResponseDTO.builder()
                                 .id(delivery.getId())
                                 .trackingCode(delivery.getTrackingCode())
                                 .status(delivery.getStatus())
@@ -194,18 +194,32 @@ public class ClientController {
                                                 .length(delivery.getPackageLength())
                                                 .width(delivery.getPackageWidth())
                                                 .height(delivery.getPackageHeight())
-                                                .build())
-                                .pickupLocation(parseLocation(delivery.getPickupLocationId(),
-                                                delivery.getSenderAddress()))
-                                .deliveryLocation(parseLocation(delivery.getDeliveryLocationId(),
-                                                delivery.getRecipientAddress()))
-                                .build();
+                                                .build());
+
+                return Mono.zip(
+                                resolveLocation(delivery.getPickupLocationId(), delivery.getSenderAddress())
+                                                .defaultIfEmpty(new LocationDTO()),
+                                resolveLocation(delivery.getDeliveryLocationId(), delivery.getRecipientAddress())
+                                                .defaultIfEmpty(new LocationDTO()))
+                                .map(tuple -> {
+                                        builder.pickupLocation(tuple.getT1());
+                                        builder.deliveryLocation(tuple.getT2());
+                                        return builder.build();
+                                });
         }
 
         /**
-         * Mapping Delivery → TrackingInfoDTO (informations publiques limitées)
+         * Mapping Delivery → DeliveryResponseDTO
          */
-        private TrackingInfoDTO mapToTrackingDTO(Delivery delivery) {
+        private DeliveryResponseDTO mapToResponseDTO(Delivery delivery) {
+                return mapToResponseDTOReactive(delivery).block();
+        }
+
+        /**
+         * Mapping Delivery → TrackingInfoDTO (informations publiques limitées) de
+         * manière réactive
+         */
+        private Mono<TrackingInfoDTO> mapToTrackingDTOReactive(Delivery delivery) {
                 TrackingInfoDTO.TrackingInfoDTOBuilder builder = TrackingInfoDTO.builder()
                                 .trackingCode(delivery.getTrackingCode())
                                 .status(delivery.getStatus())
@@ -221,169 +235,157 @@ public class ClientController {
                                 .weight(delivery.getWeight())
                                 .estimatedDeliveryTime(delivery.getDeadline())
                                 .price(delivery.getPrice())
-                                // Coordonnées GPS pour la carte
-                                .pickupLocation(parseLocation(delivery.getPickupLocationId(),
-                                                delivery.getSenderAddress()))
-                                .deliveryLocation(parseLocation(delivery.getDeliveryLocationId(),
-                                                delivery.getRecipientAddress()))
                                 .driverLocation(null); // TODO: Position en temps réel via WebSocket
 
-                // For active deliveries (PICKED_UP, IN_TRANSIT), calculate route and ETA
-                if (delivery.getStatus() == Delivery.DeliveryStatus.PICKED_UP ||
-                                delivery.getStatus() == Delivery.DeliveryStatus.IN_TRANSIT) {
-                        try {
-                                enrichWithRouteAndETA(delivery, builder);
-                        } catch (Exception e) {
-                                log.warn("Failed to enrich tracking data with route/ETA for {}: {}",
-                                                delivery.getTrackingCode(), e.getMessage());
-                        }
-                }
+                return Mono.zip(
+                                resolveLocation(delivery.getPickupLocationId(), delivery.getSenderAddress())
+                                                .defaultIfEmpty(new LocationDTO()),
+                                resolveLocation(delivery.getDeliveryLocationId(), delivery.getRecipientAddress())
+                                                .defaultIfEmpty(new LocationDTO()))
+                                .map(tuple -> {
+                                        LocationDTO pickup = tuple.getT1();
+                                        LocationDTO deliveryLoc = tuple.getT2();
 
-                return builder.build();
-        }
+                                        if (pickup.getLatitude() != null)
+                                                builder.pickupLocation(pickup);
+                                        if (deliveryLoc.getLatitude() != null)
+                                                builder.deliveryLocation(deliveryLoc);
 
-        /**
-         * Enrich tracking DTO with route path and ETA information
-         */
-        private void enrichWithRouteAndETA(Delivery delivery, TrackingInfoDTO.TrackingInfoDTOBuilder builder) {
-                try {
-                        // Get origin and destination
-                        String originId = delivery.getPickupLocationId();
-                        String destId = delivery.getDeliveryLocationId();
-
-                        if (originId == null || destId == null) {
-                                log.debug("Missing location IDs for route calculation");
-                                return;
-                        }
-
-                        // Calculate shortest path
-                        var routeRequest = new ShortestPathRequest();
-                        routeRequest.setOrigin(originId);
-                        routeRequest.setDestination(destId);
-                        routeRequest.setDriverId(delivery.getDriverId());
-
-                        ShortestPathRequest.CostWeights defaultWeights = new ShortestPathRequest.CostWeights();
-                        defaultWeights.setAlpha(1.0);
-                        defaultWeights.setBeta(1.5);
-                        defaultWeights.setGamma(1.0);
-                        defaultWeights.setDelta(1.2);
-                        defaultWeights.setEta(1.0);
-                        routeRequest.setCostWeights(defaultWeights);
-
-                        var pathResponse = shortestPathService.calculateShortestPath(routeRequest).block();
-
-                        if (pathResponse != null && pathResponse.getPath() != null) {
-                                // Convert node IDs to GPS coordinates
-                                List<List<Double>> routePath = new ArrayList<>();
-                                for (String nodeId : pathResponse.getPath()) {
-                                        LocationDTO loc = parseLocationForNode(nodeId, delivery);
-                                        if (loc != null && loc.getLatitude() != null && loc.getLongitude() != null) {
-                                                routePath.add(Arrays.asList(loc.getLatitude(),
-                                                                loc.getLongitude()));
+                                        return builder;
+                                })
+                                .flatMap(b -> {
+                                        // Pour les livraisons actives, enrichir avec l'itinéraire et l'ETA
+                                        if (delivery.getStatus() == Delivery.DeliveryStatus.PICKED_UP ||
+                                                        delivery.getStatus() == Delivery.DeliveryStatus.IN_TRANSIT) {
+                                                return enrichWithRouteAndETAReactive(delivery, b);
                                         }
-                                }
-
-                                if (!routePath.isEmpty()) {
-                                        builder.routePath(routePath);
-                                        builder.totalDistance(pathResponse.getDistance());
-                                }
-                        }
-
-                        // Get ETA and remaining distance
-                        var etaStats = etaService.getLatestStats(delivery.getId()).block();
-                        if (etaStats != null) {
-                                builder.remainingDistance(etaStats.getRemainingDistance());
-                                builder.estimatedArrival(etaStats.getEtaMin()); // Using min ETA
-
-                                // Calculate progress percentage
-                                if (etaStats.getKalmanState() != null) {
-                                        double distCovered = etaStats.getKalmanState().getDistanceCovered();
-                                        builder.progressPercentage(Math.min(100.0, distCovered * 100.0));
-                                }
-                        }
-                } catch (Exception e) {
-                        log.error("Error enriching route data: {}", e.getMessage(), e);
-                }
+                                        return Mono.just(b.build());
+                                });
         }
 
         /**
-         * Parse location for a node in the route path
+         * Mapping Delivery → TrackingInfoDTO (OBSOLÈTE, pour compatibilité temporaire
+         * si nécessaire)
          */
-        private LocationDTO parseLocationForNode(String nodeId, Delivery delivery) {
-                // First check if it matches pickup or delivery location
-                if (nodeId.equals(delivery.getPickupLocationId())) {
-                        return parseLocation(delivery.getPickupLocationId(), delivery.getSenderAddress());
-                }
-                if (nodeId.equals(delivery.getDeliveryLocationId())) {
-                        return parseLocation(delivery.getDeliveryLocationId(), delivery.getRecipientAddress());
-                }
-
-                // Try to parse as GPS coordinates
-                LocationDTO loc = parseLocation(nodeId, null);
-                if (loc != null) {
-                        return loc;
-                }
-
-                // Try to fetch from Node repository
-                try {
-                        var node = nodeRepository.findById(nodeId).block();
-                        if (node != null && node.getLatitude() != null && node.getLongitude() != null) {
-                                return LocationDTO.builder()
-                                                .latitude(node.getLatitude())
-                                                .longitude(node.getLongitude())
-                                                .address(node.getName())
-                                                .build();
-                        }
-                } catch (Exception e) {
-                        log.debug("Could not fetch node {} from repository: {}", nodeId, e.getMessage());
-                }
-
-                return null;
+        private TrackingInfoDTO mapToTrackingDTO(Delivery delivery) {
+                // Cette méthode est maintenant dépréciée au profit de la version réactive
+                return mapToTrackingDTOReactive(delivery).block();
         }
 
         /**
-         * Parse une chaîne de coordonnées au format "lat,lng" en LocationDTO
-         * Si le format est "RELAY_XXX", retourne null pour l'instant (à améliorer)
+         * Enrichit de manière réactive les données de tracking avec l'itinéraire et
+         * l'ETA
          */
-        private LocationDTO parseLocation(String locationId, String address) {
+        private Mono<TrackingInfoDTO> enrichWithRouteAndETAReactive(Delivery delivery,
+                        TrackingInfoDTO.TrackingInfoDTOBuilder builder) {
+                String originId = delivery.getPickupLocationId();
+                String destId = delivery.getDeliveryLocationId();
+
+                if (originId == null || destId == null) {
+                        return Mono.just(builder.build());
+                }
+
+                // Préparer la requête d'itinéraire
+                ShortestPathRequest routeRequest = ShortestPathRequest.builder()
+                                .origin(originId)
+                                .destination(destId)
+                                .driverId(delivery.getDriverId())
+                                .timestamp(Instant.now())
+                                .costWeights(ShortestPathRequest.CostWeights.builder()
+                                                .alpha(1.0).beta(1.5).gamma(1.0).delta(1.2).eta(1.0)
+                                                .build())
+                                .build();
+
+                // Calculer l'itinéraire reactively
+                Mono<TrackingInfoDTO.TrackingInfoDTOBuilder> routeMono = shortestPathService
+                                .calculateShortestPath(routeRequest)
+                                .flatMap(pathResponse -> {
+                                        if (pathResponse == null || pathResponse.getPath() == null) {
+                                                return Mono.just(builder);
+                                        }
+
+                                        return Flux.fromIterable(pathResponse.getPath())
+                                                        .flatMap(nodeId -> resolveLocation(nodeId, null))
+                                                        .collectList()
+                                                        .map(locations -> {
+                                                                List<List<Double>> routePath = new ArrayList<>();
+                                                                for (LocationDTO loc : locations) {
+                                                                        if (loc != null && loc.getLatitude() != null) {
+                                                                                routePath.add(Arrays.asList(
+                                                                                                loc.getLatitude(),
+                                                                                                loc.getLongitude()));
+                                                                        }
+                                                                }
+
+                                                                if (!routePath.isEmpty()) {
+                                                                        builder.routePath(routePath);
+                                                                        builder.totalDistance(
+                                                                                        pathResponse.getDistance());
+                                                                }
+                                                                return builder;
+                                                        });
+                                })
+                                .defaultIfEmpty(builder);
+
+                // Récupérer les stats ETA reactively
+                Mono<TrackingInfoDTO.TrackingInfoDTOBuilder> etaMono = etaService.getLatestStats(delivery.getId())
+                                .map(etaStats -> {
+                                        if (etaStats != null) {
+                                                builder.remainingDistance(etaStats.getRemainingDistance());
+                                                builder.estimatedArrival(etaStats.getEtaMin());
+
+                                                if (etaStats.getKalmanState() != null) {
+                                                        double distCovered = etaStats.getKalmanState()
+                                                                        .getDistanceCovered();
+                                                        builder.progressPercentage(
+                                                                        Math.min(100.0, distCovered * 100.0));
+                                                }
+                                        }
+                                        return builder;
+                                })
+                                .defaultIfEmpty(builder);
+
+                return Mono.zip(routeMono, etaMono)
+                                .map(tuple -> tuple.getT1().build());
+        }
+
+        /**
+         * Résout une localisation par son ID de manière réactive
+         */
+        private Mono<LocationDTO> resolveLocation(String locationId, String address) {
                 if (locationId == null || locationId.isEmpty()) {
-                        return null;
+                        return Mono.empty();
                 }
 
-                // Si c'est un point relais, on récupère les coordonnées depuis le repository
+                // Cas d'un point relais (RELAY_XXX)
                 if (locationId.startsWith("RELAY_")) {
-                        try {
-                                com.delivery.optimization.domain.Node node = nodeRepository.findById(locationId)
-                                                .block();
-                                if (node != null && node.getLatitude() != null && node.getLongitude() != null) {
-                                        return LocationDTO.builder()
+                        return nodeRepository.findById(locationId)
+                                        .map(node -> LocationDTO.builder()
                                                         .latitude(node.getLatitude())
                                                         .longitude(node.getLongitude())
                                                         .address(node.getName())
-                                                        .build();
-                                }
-                        } catch (Exception e) {
-                                log.warn("Failed to resolve relay coordinates for {}: {}", locationId, e.getMessage());
-                        }
-                        return null;
+                                                        .build())
+                                        .doOnError(e -> log.warn("Failed to resolve relay coordinates for {}: {}",
+                                                        locationId, e.getMessage()))
+                                        .onErrorResume(e -> Mono.empty());
                 }
 
-                // Parser le format "lat,lng"
+                // Cas de coordonnées directes "lat,lng"
                 try {
                         String[] parts = locationId.split(",");
                         if (parts.length == 2) {
                                 double latitude = Double.parseDouble(parts[0].trim());
                                 double longitude = Double.parseDouble(parts[1].trim());
-                                return LocationDTO.builder()
+                                return Mono.just(LocationDTO.builder()
                                                 .latitude(latitude)
                                                 .longitude(longitude)
                                                 .address(address)
-                                                .build();
+                                                .build());
                         }
-                } catch (NumberFormatException e) {
-                        log.warn("Failed to parse location coordinates: {}", locationId);
+                } catch (Exception e) {
+                        log.warn("Failed to parse coordinates: {}", locationId);
                 }
 
-                return null;
+                return Mono.empty();
         }
 }

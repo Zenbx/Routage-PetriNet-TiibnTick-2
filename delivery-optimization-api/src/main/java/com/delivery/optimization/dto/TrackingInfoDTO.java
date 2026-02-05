@@ -30,9 +30,18 @@ public class TrackingInfoDTO {
 
     // Informations limitées (sans numéros de téléphone)
     private String senderName;
+    private String senderAddress;
+    private String senderLandmark; // Lieu-dit expéditeur
+    private String senderCity;
+    private String senderRegion;
+    private String senderCountry;
+
     private String recipientName;
     private String recipientAddress;
     private String recipientLandmark; // Lieu-dit destinataire
+    private String recipientCity;
+    private String recipientRegion;
+    private String recipientCountry;
 
     // Informations de livraison
     private String currentLocation; // Position actuelle du livreur

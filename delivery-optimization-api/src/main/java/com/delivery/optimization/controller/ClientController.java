@@ -2,6 +2,8 @@ package com.delivery.optimization.controller;
 
 import com.delivery.optimization.domain.Delivery;
 import com.delivery.optimization.dto.*;
+import com.delivery.optimization.dto.LocationDTO;
+import com.delivery.optimization.domain.Delivery.DeliveryStatus;
 import com.delivery.optimization.repository.DeliveryRepository;
 import com.delivery.optimization.repository.NodeRepository;
 import com.delivery.optimization.service.ETAService;
@@ -292,12 +294,9 @@ public class ClientController {
                                         return builder;
                                 })
                                 .flatMap(b -> {
-                                        // Pour les livraisons actives, enrichir avec l'itinéraire et l'ETA
-                                        if (delivery.getStatus() == Delivery.DeliveryStatus.PICKED_UP ||
-                                                        delivery.getStatus() == Delivery.DeliveryStatus.IN_TRANSIT) {
-                                                return enrichWithRouteAndETAReactive(delivery, b);
-                                        }
-                                        return Mono.just(b.build());
+                                        // On enrichit systématiquement avec l'itinéraire et l'ETA (si disponible)
+                                        // Cela permet de voir le trajet projeté même pour les livraisons en attente
+                                        return enrichWithRouteAndETAReactive(delivery, b);
                                 });
         }
 
@@ -397,15 +396,17 @@ public class ClientController {
 
                 // Cas de coordonnées directes "lat,lng"
                 try {
-                        String[] parts = locationId.split(",");
-                        if (parts.length == 2) {
-                                double latitude = Double.parseDouble(parts[0].trim());
-                                double longitude = Double.parseDouble(parts[1].trim());
-                                return Mono.just(LocationDTO.builder()
-                                                .latitude(latitude)
-                                                .longitude(longitude)
-                                                .address(address)
-                                                .build());
+                        if (locationId.contains(",")) {
+                                String[] parts = locationId.split(",");
+                                if (parts.length == 2) {
+                                        double latitude = Double.parseDouble(parts[0].trim());
+                                        double longitude = Double.parseDouble(parts[1].trim());
+                                        return Mono.just(LocationDTO.builder()
+                                                        .latitude(latitude)
+                                                        .longitude(longitude)
+                                                        .address(address)
+                                                        .build());
+                                }
                         }
                 } catch (Exception e) {
                         log.debug("Not direct coordinates: {}", locationId);

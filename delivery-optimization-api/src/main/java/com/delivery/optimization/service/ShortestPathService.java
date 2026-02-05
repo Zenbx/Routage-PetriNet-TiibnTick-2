@@ -54,12 +54,6 @@ public class ShortestPathService {
                         return Mono.error(new RuntimeException("Path not found"));
                     }
 
-                    double totalDistance = 0.0;
-                    double estimatedTime = 0.0;
-                    double totalPenibilityCost = 0.0;
-                    double totalWeatherCost = 0.0;
-                    double totalFuelCost = 0.0;
-
                     // Récupérer les paramètres du livreur (ou valeurs par défaut)
                     return (request.getDriverId() != null
                             ? driverRepository.findById(request.getDriverId())
@@ -69,6 +63,12 @@ public class ShortestPathService {
                                     .fuelConsumption(8.0)
                                     .build())
                             .flatMap(driver -> {
+                                double totalDistance = 0.0;
+                                double estimatedTime = 0.0;
+                                double totalPenibilityCost = 0.0;
+                                double totalWeatherCost = 0.0;
+                                double totalFuelCost = 0.0;
+
                                 double avgSpeed = driver.getAverageSpeed() != null ? driver.getAverageSpeed() : 40.0;
                                 double fuelCons = driver.getFuelConsumption() != null ? driver.getFuelConsumption()
                                         : 8.0;

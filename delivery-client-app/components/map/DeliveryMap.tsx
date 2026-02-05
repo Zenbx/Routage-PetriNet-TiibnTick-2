@@ -40,26 +40,51 @@ export function DeliveryMap({
   const mapContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!mapContainerRef.current) return;
+    if (!mapContainerRef.current || mapRef.current) return;
 
-    // Initialize map
-    if (!mapRef.current) {
-      mapRef.current = L.map(mapContainerRef.current, {
-        center: [3.8480, 11.5021], // Yaoundé, Cameroun (centre par défaut)
-        zoom: 13,
-        zoomControl: true,
-      });
+    // Initialize map only once
+    const map = L.map(mapContainerRef.current, {
+      center: [3.8480, 11.5021],
+      zoom: 13,
+      zoomControl: true,
+    });
 
-      // Add OpenStreetMap tiles
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        maxZoom: 19,
-      }).addTo(mapRef.current);
-    }
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      maxZoom: 19,
+    }).addTo(map);
 
+    mapRef.current = map;
+
+    // Force tile refresh after a short delay
+    setTimeout(() => {
+      map.invalidateSize();
+    }, 100);
+
+    // Watch for container resizes (Full-screen toggle, etc)
+    const resizeObserver = new ResizeObserver(() => {
+      if (mapRef.current) {
+        mapRef.current.invalidateSize();
+      }
+    });
+
+    resizeObserver.observe(mapContainerRef.current);
+
+    return () => {
+      resizeObserver.disconnect();
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+    };
+  }, []);
+
+  // Effect to update content (markers, route, hubs)
+  useEffect(() => {
     const map = mapRef.current;
+    if (!map) return;
 
-    // Clear existing markers and polylines
+    // Clear existing transient layers (markers and polylines)
     map.eachLayer((layer) => {
       if (layer instanceof L.Marker || layer instanceof L.Polyline) {
         map.removeLayer(layer);
@@ -70,7 +95,6 @@ export function DeliveryMap({
 
     // Add Hub markers (Relay Points)
     hubs.forEach((hub) => {
-      // Don't duplicate markers if it's already a pickup/delivery location handled below
       const hubIcon = L.divIcon({
         html: `
           <div class="flex items-center justify-center w-8 h-8 bg-amber-100 rounded-full shadow-md border-2 border-amber-500">
@@ -85,16 +109,14 @@ export function DeliveryMap({
         iconAnchor: [16, 16],
       });
 
-      const marker = L.marker([hub.latitude, hub.longitude], {
-        icon: hubIcon,
-      }).addTo(map);
-
-      marker.bindPopup(`
-        <div class="p-1">
-          <div class="font-bold text-xs">🏪 Point Relais</div>
-          <div class="text-[10px] text-gray-600">${hub.name}</div>
-        </div>
-      `);
+      L.marker([hub.latitude, hub.longitude], { icon: hubIcon })
+        .addTo(map)
+        .bindPopup(`
+          <div class="p-1 text-black">
+            <div class="font-bold text-xs">🏪 Point Relais</div>
+            <div class="text-[10px] text-gray-600">${hub.name}</div>
+          </div>
+        `);
     });
 
     // Add pickup marker
@@ -113,17 +135,14 @@ export function DeliveryMap({
         iconAnchor: [20, 40],
       });
 
-      const marker = L.marker([pickupLocation.latitude, pickupLocation.longitude], {
-        icon: pickupIcon,
-        zIndexOffset: 1000
-      }).addTo(map);
-
-      marker.bindPopup(`
-        <div class="p-2">
-          <div class="font-bold text-sm mb-1">📦 Point de récupération</div>
-          <div class="text-xs text-gray-600">${pickupLocation.address || "Adresse non disponible"}</div>
-        </div>
-      `);
+      L.marker([pickupLocation.latitude, pickupLocation.longitude], { icon: pickupIcon, zIndexOffset: 1000 })
+        .addTo(map)
+        .bindPopup(`
+          <div class="p-2 text-black">
+            <div class="font-bold text-sm mb-1">📦 Point de récupération</div>
+            <div class="text-xs text-gray-600">${pickupLocation.address || "Adresse non disponible"}</div>
+          </div>
+        `);
 
       bounds.push([pickupLocation.latitude, pickupLocation.longitude]);
     }
@@ -144,17 +163,14 @@ export function DeliveryMap({
         iconAnchor: [20, 40],
       });
 
-      const marker = L.marker([deliveryLocation.latitude, deliveryLocation.longitude], {
-        icon: deliveryIcon,
-        zIndexOffset: 1000
-      }).addTo(map);
-
-      marker.bindPopup(`
-        <div class="p-2">
-          <div class="font-bold text-sm mb-1">🏠 Point de livraison</div>
-          <div class="text-xs text-gray-600">${deliveryLocation.address || "Adresse non disponible"}</div>
-        </div>
-      `);
+      L.marker([deliveryLocation.latitude, deliveryLocation.longitude], { icon: deliveryIcon, zIndexOffset: 1000 })
+        .addTo(map)
+        .bindPopup(`
+          <div class="p-2 text-black">
+            <div class="font-bold text-sm mb-1">🏠 Point de livraison</div>
+            <div class="text-xs text-gray-600">${deliveryLocation.address || "Adresse non disponible"}</div>
+          </div>
+        `);
 
       bounds.push([deliveryLocation.latitude, deliveryLocation.longitude]);
     }
@@ -178,39 +194,29 @@ export function DeliveryMap({
         iconAnchor: [20, 40],
       });
 
-      const marker = L.marker([driverLocation.latitude, driverLocation.longitude], {
-        icon: driverIcon,
-        zIndexOffset: 2000
-      }).addTo(map);
-
-      marker.bindPopup(`
-        <div class="p-2">
-          <div class="font-bold text-sm mb-1">🚚 Livreur</div>
-          <div class="text-xs text-gray-600">Position actuelle</div>
-        </div>
-      `);
+      L.marker([driverLocation.latitude, driverLocation.longitude], { icon: driverIcon, zIndexOffset: 2000 })
+        .addTo(map)
+        .bindPopup(`
+          <div class="p-2 text-black">
+            <div class="font-bold text-sm mb-1">🚚 Livreur</div>
+            <div class="text-xs text-gray-600">Position actuelle</div>
+          </div>
+        `);
 
       bounds.push([driverLocation.latitude, driverLocation.longitude]);
     }
 
-    // Draw route line - ORANGE for navigation
+    // Draw route line
     if (routePoints.length > 0) {
       L.polyline(routePoints, {
-        color: "#f97316", // Orange-500
+        color: "#f97316",
         weight: 6,
         opacity: 0.8,
         lineJoin: 'round'
       }).addTo(map);
-
       routePoints.forEach(p => bounds.push(p));
     } else if (pickupLocation && deliveryLocation) {
-      // Fallback to simple line if real geometry not provided
-      const simplePoints: L.LatLngExpression[] = [
-        [pickupLocation.latitude, pickupLocation.longitude],
-        [deliveryLocation.latitude, deliveryLocation.longitude]
-      ];
-
-      L.polyline(simplePoints, {
+      L.polyline([[pickupLocation.latitude, pickupLocation.longitude], [deliveryLocation.latitude, deliveryLocation.longitude]], {
         color: "#f97316",
         weight: 4,
         opacity: 0.6,
@@ -223,14 +229,7 @@ export function DeliveryMap({
       const latLngBounds = L.latLngBounds(bounds as L.LatLngTuple[]);
       map.fitBounds(latLngBounds, { padding: [50, 50] });
     }
-
-    return () => {
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
-      }
-    };
-  }, [pickupLocation, deliveryLocation, driverLocation]);
+  }, [pickupLocation, deliveryLocation, driverLocation, hubs, routePoints]);
 
   return (
     <div

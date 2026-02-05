@@ -96,6 +96,8 @@ export function DeliveryMap({
       }
     });
 
+    console.log("DeliveryMap: routePoints =", routePoints);
+
     const bounds: L.LatLngExpression[] = [];
 
     // Add Hub markers (Relay Points)

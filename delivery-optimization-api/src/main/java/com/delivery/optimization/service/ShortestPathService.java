@@ -78,6 +78,13 @@ public class ShortestPathService {
                                 List<List<Double>> geometryPath = new ArrayList<>();
                                 List<String> pathNodes = result.getPath();
 
+                                if (pathNodes.isEmpty()) {
+                                    System.out.println("DEBUG: A* returned empty path for " + request.getOrigin()
+                                            + " to " + request.getDestination());
+                                } else {
+                                    System.out.println("DEBUG: A* found path: " + pathNodes);
+                                }
+
                                 for (int i = 0; i < pathNodes.size() - 1; i++) {
                                     String from = pathNodes.get(i);
                                     String to = pathNodes.get(i + 1);
@@ -117,8 +124,12 @@ public class ShortestPathService {
                                             }
                                             if (nTo != null) {
                                                 geometryPath.add(Arrays.asList(nTo.getLatitude(), nTo.getLongitude()));
+                                            } else {
+                                                System.out.println("DEBUG: Node " + to + " not found in map for geom");
                                             }
                                         }
+                                    } else {
+                                        System.out.println("DEBUG: Edge " + from + " -> " + to + " not found!");
                                     }
                                 }
 
@@ -128,6 +139,8 @@ public class ShortestPathService {
                                         "Penibility", totalPenibilityCost,
                                         "Weather", totalWeatherCost,
                                         "Fuel", totalFuelCost);
+
+                                System.out.println("DEBUG: Final geometryPath size: " + geometryPath.size());
 
                                 return Mono.just(ShortestPathResponse.builder()
                                         .path(pathNodes)

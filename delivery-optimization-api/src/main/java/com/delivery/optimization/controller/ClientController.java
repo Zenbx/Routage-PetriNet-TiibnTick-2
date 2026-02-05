@@ -373,6 +373,12 @@ public class ClientController {
                                                 return Mono.just(builder);
                                         }
 
+                                        log.info("Path found for {}: size={}, distance={}",
+                                                        delivery.getTrackingCode(),
+                                                        pathResponse.getPath() != null ? pathResponse.getPath().size()
+                                                                        : 0,
+                                                        pathResponse.getDistance());
+
                                         // Si on a déjà la géométrie détaillée (routes réelles), on l'utilise
                                         // directement
                                         if (pathResponse.getGeometryPath() != null
@@ -385,10 +391,13 @@ public class ClientController {
                                                 return Mono.just(builder);
                                         }
 
-                                        // Sinon (fallback), on résout les nodes un par un (lignes droites entre
-                                        // nodes)
+                                        // Sinon (fallback), on résout les nodes un par un
+                                        // (lignes droites entre nodes)
+                                        // Utilisation de concatMap pour préserver l'ordre du
+                                        // trajet
                                         return Flux.fromIterable(pathResponse.getPath())
-                                                        .flatMap(nodeId -> resolveLocation(nodeId, null)
+                                                        .concatMap(nodeId -> resolveLocation(
+                                                                        nodeId, null)
                                                                         .doOnNext(loc -> {
                                                                                 if (loc.getLatitude() == null) {
                                                                                         log.warn("Failed to resolved coordinates for node {} in path of {}",
@@ -400,7 +409,8 @@ public class ClientController {
                                                         .map(locations -> {
                                                                 List<List<Double>> routePath = new ArrayList<>();
                                                                 for (LocationDTO loc : locations) {
-                                                                        if (loc != null && loc.getLatitude() != null) {
+                                                                        if (loc != null && loc
+                                                                                        .getLatitude() != null) {
                                                                                 routePath.add(Arrays.asList(
                                                                                                 loc.getLatitude(),
                                                                                                 loc.getLongitude()));
@@ -408,7 +418,8 @@ public class ClientController {
                                                                 }
 
                                                                 if (!routePath.isEmpty()) {
-                                                                        builder.routePath(routePath);
+                                                                        builder.routePath(
+                                                                                        routePath);
                                                                         builder.totalDistance(
                                                                                         pathResponse.getDistance());
                                                                         log.debug("Enriched tracking info for {} with {} node-to-node points",

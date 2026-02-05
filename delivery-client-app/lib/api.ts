@@ -459,6 +459,11 @@ class DeliveryAPI {
     return this.request<any[]>("/v1/graph/nodes", { method: "GET" });
   }
 
+  async getHubs(): Promise<any[]> {
+    const nodes = await this.getNodes();
+    return nodes.filter(n => n.type === 'RELAY' || n.type === 'DEPOT');
+  }
+
   async findShortestPath(originId: string, destinationId: string): Promise<any> {
     return this.request<any>("/v1/routing/shortest-path", {
       method: "POST",

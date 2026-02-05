@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { Search, QrCode, Package, MapPin, Clock, User, ArrowLeft } from "lucide-react";
+import { useToast } from "@/components/ui/Toast";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api, formatPrice, formatDistance, type TrackingResponse } from "@/lib/api";
 import Link from "next/link";
@@ -24,6 +25,7 @@ function TrackingContent() {
   const [trackingInfo, setTrackingInfo] = useState<TrackingResponse | null>(null);
   const [error, setError] = useState("");
   const router = useRouter();
+  const toast = useToast();
 
   // Auto-track si code dans URL
   useEffect(() => {
@@ -42,6 +44,10 @@ function TrackingContent() {
     try {
       const data = await api.trackDelivery(trackingCode.trim());
       setTrackingInfo(data);
+
+      if (data.status === "PENDING" || data.status === "ACCEPTED") {
+        toast.warning("Le colis n'a pas encore été récupéré par le livreur. Les informations de trajet seront disponibles après la récupération.");
+      }
     } catch (err: any) {
       setError(err.message || "Une erreur est survenue");
       setTrackingInfo(null);

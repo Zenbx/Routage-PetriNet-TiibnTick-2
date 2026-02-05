@@ -48,11 +48,13 @@ export default function HomePage() {
             title="Cameroun & Nigeria"
             description="Livraison dans toutes les régions du Cameroun et du Nigeria"
           />
-          <FeatureCard
-            icon={<Clock className="w-8 h-8" />}
-            title="Suivi en temps réel"
-            description="Suivez votre colis à chaque étape avec votre code de tracking"
-          />
+          <Link href="/tracking">
+            <FeatureCard
+              icon={<Clock className="w-8 h-8" />}
+              title="Suivi en temps réel"
+              description="Suivez votre colis à chaque étape avec votre code de tracking"
+            />
+          </Link>
           <FeatureCard
             icon={<Shield className="w-8 h-8" />}
             title="Sécurisé et fiable"

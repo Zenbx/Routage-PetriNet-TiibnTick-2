@@ -350,9 +350,22 @@ public class ClientController {
                         return null;
                 }
 
-                // Si c'est un point relais, on n'a pas les coordonnées pour l'instant
+                // Si c'est un point relais, on récupère les coordonnées depuis le repository
                 if (locationId.startsWith("RELAY_")) {
-                        return null; // TODO: Récupérer coordonnées depuis base de données des relais
+                        try {
+                                com.delivery.optimization.domain.Node node = nodeRepository.findById(locationId)
+                                                .block();
+                                if (node != null && node.getLatitude() != null && node.getLongitude() != null) {
+                                        return LocationDTO.builder()
+                                                        .latitude(node.getLatitude())
+                                                        .longitude(node.getLongitude())
+                                                        .address(node.getName())
+                                                        .build();
+                                }
+                        } catch (Exception e) {
+                                log.warn("Failed to resolve relay coordinates for {}: {}", locationId, e.getMessage());
+                        }
+                        return null;
                 }
 
                 // Parser le format "lat,lng"

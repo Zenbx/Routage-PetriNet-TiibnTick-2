@@ -38,4 +38,6 @@ public class SenderInfoDTO {
      */
     @NotBlank(message = "L'emplacement de récupération est obligatoire")
     private String pickupLocationId;
+
+    private String landmark; // Lieu-dit expéditeur
 }

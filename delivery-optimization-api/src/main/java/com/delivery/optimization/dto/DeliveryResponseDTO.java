@@ -29,4 +29,8 @@ public class DeliveryResponseDTO {
     private SenderInfoDTO sender;
     private RecipientInfoDTO recipient;
     private PackageInfoDTO package_;
+
+    // Coordonnées GPS pour la carte
+    private LocationDTO pickupLocation;
+    private LocationDTO deliveryLocation;
 }

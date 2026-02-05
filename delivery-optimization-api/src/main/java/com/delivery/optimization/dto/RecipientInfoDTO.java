@@ -38,4 +38,6 @@ public class RecipientInfoDTO {
      */
     @NotBlank(message = "L'emplacement de livraison est obligatoire")
     private String deliveryLocationId;
+
+    private String landmark; // Lieu-dit destinataire
 }

@@ -186,6 +186,11 @@ function TrackingContent() {
                     <div className="text-text-muted text-xs">
                       {trackingInfo.recipientAddress}
                     </div>
+                    {trackingInfo.recipientLandmark && (
+                      <div className="text-orange-400 text-xs mt-1 italic">
+                        📍 {trackingInfo.recipientLandmark}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -317,8 +322,8 @@ function TimelineItem({
       <div className="flex flex-col items-center">
         <div
           className={`w-4 h-4 rounded-full border-2 ${isCompleted
-              ? "bg-primary border-primary"
-              : "bg-background border-border"
+            ? "bg-primary border-primary"
+            : "bg-background border-border"
             }`}
         />
         {!isLast && (

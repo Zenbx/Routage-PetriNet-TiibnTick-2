@@ -78,19 +78,21 @@ export default function DepositPage() {
         sender: {
           name: completeData.sender.name,
           phone: completeData.sender.phone,
-          address: `${completeData.sender.address}, ${completeData.sender.city}, ${completeData.sender.region}`,
+          address: completeData.sender.address,
+          landmark: completeData.sender.landmark,
           pickupType: (completeData.package.homePickup ? "HOME" : "RELAY_POINT") as "HOME" | "RELAY_POINT",
           pickupLocationId: completeData.package.homePickup
-            ? `${completeData.sender.city}_HOME`
+            ? (completeData.sender.latitude ? `${completeData.sender.latitude},${completeData.sender.longitude}` : `${completeData.sender.city}_HOME`)
             : `RELAY_${completeData.sender.city}`,
         },
         recipient: {
           name: completeData.recipient.name,
           phone: completeData.recipient.phone,
-          address: `${completeData.recipient.address}, ${completeData.recipient.city}, ${completeData.recipient.region}`,
+          address: completeData.recipient.address,
+          landmark: completeData.recipient.landmark,
           deliveryType: (completeData.package.homeDelivery ? "HOME" : "RELAY_POINT") as "HOME" | "RELAY_POINT",
           deliveryLocationId: completeData.package.homeDelivery
-            ? `${completeData.recipient.city}_HOME`
+            ? (completeData.recipient.latitude ? `${completeData.recipient.latitude},${completeData.recipient.longitude}` : `${completeData.recipient.city}_HOME`)
             : `RELAY_${completeData.recipient.city}`,
         },
         package_: {

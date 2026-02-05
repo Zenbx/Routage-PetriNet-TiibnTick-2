@@ -38,6 +38,7 @@ public class Delivery implements Persistable<String> {
     private String senderName;
     private String senderPhone;
     private String senderAddress;
+    private String senderLandmark; // Lieu-dit expéditeur (ex: "Face station")
     private PickupType pickupType; // RELAY_POINT ou HOME
     private String pickupLocationId; // ID du point relais ou coordonnées domicile
 
@@ -45,6 +46,7 @@ public class Delivery implements Persistable<String> {
     private String recipientName;
     private String recipientPhone;
     private String recipientAddress;
+    private String recipientLandmark; // Lieu-dit destinataire
     private DeliveryType deliveryType; // RELAY_POINT ou HOME
     private String deliveryLocationId; // ID du point relais ou coordonnées domicile
 

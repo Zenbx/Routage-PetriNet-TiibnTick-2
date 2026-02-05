@@ -31,6 +31,7 @@ public class TrackingInfoDTO {
     private String senderName;
     private String recipientName;
     private String recipientAddress;
+    private String recipientLandmark; // Lieu-dit destinataire
 
     // Informations de livraison
     private String currentLocation; // Position actuelle du livreur
@@ -38,9 +39,9 @@ public class TrackingInfoDTO {
     private Double progressPercentage;
 
     // Coordonnées GPS pour la carte
-    private LocationDTO pickupLocation;   // Coordonnées du point de récupération
+    private LocationDTO pickupLocation; // Coordonnées du point de récupération
     private LocationDTO deliveryLocation; // Coordonnées du point de livraison
-    private LocationDTO driverLocation;   // Position actuelle du livreur (si en cours)
+    private LocationDTO driverLocation; // Position actuelle du livreur (si en cours)
 
     // Package info
     private String packageDescription;

@@ -80,12 +80,21 @@ export default function DeliveryDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [currentStatus, setCurrentStatus] = useState<"ACCEPTED" | "PICKED_UP" | "IN_TRANSIT" | "DELIVERED">("ACCEPTED");
   const [showProofUpload, setShowProofUpload] = useState(false);
+  const [hubs, setHubs] = useState<any[]>([]);
+  const [routeGeometry, setRouteGeometry] = useState<Array<[number, number]>>([]);
+  const [isNavigating, setIsNavigating] = useState(false);
 
-  // Fetch delivery details
+  // Fetch delivery details and hubs
   useEffect(() => {
-    const fetchDelivery = async () => {
+    const fetchData = async () => {
       try {
-        const data = await api.getDeliveryDetails(deliveryId);
+        const [data, allNodes] = await Promise.all([
+          api.getDeliveryDetails(deliveryId),
+          api.getNodes()
+        ]);
+
+        // Filter hubs
+        setHubs(allNodes.filter(n => n.type === 'RELAY' || n.type === 'DEPOT'));
 
         // Map API response to DeliveryDetails
         const mappedDelivery: DeliveryDetails = {
@@ -134,8 +143,49 @@ export default function DeliveryDetailsPage() {
       }
     };
 
-    fetchDelivery();
+    fetchData();
   }, [deliveryId]);
+
+  // Effect to calculate real route geometry if needed
+  useEffect(() => {
+    const calculateRoute = async () => {
+      if (!delivery?.pickupLocation || !delivery?.deliveryLocation) return;
+
+      try {
+        // En mode réel, on chercherait les nodes les plus proches
+        // ici on simule ou on utilise les IDs si disponibles
+        const originNode = await api.findNodeByName(delivery.senderCity);
+        const destNode = await api.findNodeByName(delivery.recipientCity);
+
+        if (originNode && destNode) {
+          const result = await api.findShortestPath(originNode.id, destNode.id);
+          if (result && result.path) {
+            // Transformer le path du backend en points de carte
+            // Le backend retourne des Node objects dans le path
+            const points: Array<[number, number]> = result.path.map((node: any) =>
+              [node.latitude, node.longitude] as [number, number]
+            );
+            setRouteGeometry(points);
+
+            // Mettre à jour les infos de trajet
+            if (delivery) {
+              setDelivery({
+                ...delivery,
+                distance: result.distance,
+                estimatedDuration: `${Math.round(result.estimatedTime)} min`
+              });
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Erreur calcul itinéraire:", err);
+      }
+    };
+
+    if (delivery && !loading) {
+      calculateRoute();
+    }
+  }, [delivery?.id, loading]);
 
   const handleStatusUpdate = async (newStatus: typeof currentStatus) => {
     if (newStatus === "DELIVERED") {
@@ -195,10 +245,13 @@ export default function DeliveryDetailsPage() {
     );
   }
 
-  const openNavigation = () => {
-    const destination = `${delivery.recipientAddress}, ${delivery.recipientCity}`;
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`;
-    window.open(url, "_blank");
+  const toggleNavigation = () => {
+    setIsNavigating(!isNavigating);
+    // Au lieu d'ouvrir Google Maps, on active le mode navigation interne
+    if (!isNavigating) {
+      // On pourrait scroller vers la carte
+      document.getElementById('map-section')?.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   return (
@@ -238,7 +291,7 @@ export default function DeliveryDetailsPage() {
               active={currentStatus === "PICKED_UP"}
               completed={["IN_TRANSIT", "DELIVERED"].includes(currentStatus)}
               onClick={() => handleStatusUpdate("PICKED_UP")}
-              disabled={currentStatus === "ACCEPTED"}
+              disabled={currentStatus !== "ACCEPTED" && currentStatus !== "PICKED_UP"}
             />
             <StatusButton
               label="En transit"
@@ -258,37 +311,58 @@ export default function DeliveryDetailsPage() {
         </div>
 
         {/* Map */}
-        {(delivery.pickupLocation || delivery.deliveryLocation) && (
-          <div className="card">
-            <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
+        <div className="card" id="map-section">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-bold text-lg flex items-center gap-2">
               <MapPin className="w-5 h-5 text-primary" />
               Carte de navigation
             </h2>
-            <DeliveryMap
-              pickupLocation={delivery.pickupLocation}
-              deliveryLocation={delivery.deliveryLocation}
-              className="h-[400px]"
-            />
-            <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                <span className="text-text-muted">Récupération</span>
+            {isNavigating && (
+              <div className="flex gap-4 animate-in fade-in slide-in-from-top-2">
+                <div className="flex flex-col items-end">
+                  <span className="text-[10px] uppercase text-text-muted">Distance</span>
+                  <span className="font-bold text-orange-500">{delivery.distance.toFixed(1)} km</span>
+                </div>
+                <div className="flex flex-col items-end">
+                  <span className="text-[10px] uppercase text-text-muted">ETA</span>
+                  <span className="font-bold text-orange-500">{delivery.estimatedDuration}</span>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                <span className="text-text-muted">Livraison</span>
-              </div>
+            )}
+          </div>
+          <DeliveryMap
+            pickupLocation={delivery.pickupLocation}
+            deliveryLocation={delivery.deliveryLocation}
+            hubs={hubs}
+            routePoints={routeGeometry}
+            className={`transition-all duration-500 ${isNavigating ? "h-[500px]" : "h-[300px]"}`}
+          />
+          <div className="mt-4 grid grid-cols-3 gap-2 text-[10px]">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+              <span className="text-text-muted">Départ</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <span className="text-text-muted">Arrivée</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
+              <span className="text-text-muted">Point Relais</span>
             </div>
           </div>
-        )}
+        </div>
 
         {/* Navigation Button */}
         <button
-          onClick={openNavigation}
-          className="btn-primary w-full flex items-center justify-center gap-2 text-lg py-4"
+          onClick={toggleNavigation}
+          className={`w-full flex items-center justify-center gap-2 text-lg py-4 rounded-xl font-bold transition-all ${isNavigating
+              ? "bg-orange-500 text-white shadow-lg shadow-orange-500/30 scale-[1.02]"
+              : "bg-primary text-white hover:bg-primary-light"
+            }`}
         >
-          <Navigation className="w-6 h-6" />
-          Ouvrir Google Maps
+          <Navigation className={`w-6 h-6 ${isNavigating ? "animate-pulse" : ""}`} />
+          {isNavigating ? "Navigation active (Orange)" : "Lancer la Navigation In-App"}
         </button>
 
         {/* Deposit at Hub Button - visible when package is picked up */}
@@ -497,10 +571,10 @@ function StatusButton({
       onClick={onClick}
       disabled={disabled}
       className={`px-4 py-3 rounded-xl font-medium text-sm transition-all ${completed
-          ? "bg-green-500 text-white"
-          : active
-            ? "bg-primary text-white"
-            : "bg-background-light text-text-muted hover:bg-background-card"
+        ? "bg-green-500 text-white"
+        : active
+          ? "bg-primary text-white"
+          : "bg-background-light text-text-muted hover:bg-background-card"
         } ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
     >
       {completed && <CheckCircle className="w-4 h-4 inline mr-1" />}

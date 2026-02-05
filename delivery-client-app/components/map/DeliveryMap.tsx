@@ -23,6 +23,8 @@ interface DeliveryMapProps {
   pickupLocation?: Location;
   deliveryLocation?: Location;
   driverLocation?: Location;
+  hubs?: Array<{ id: string, name: string, latitude: number, longitude: number, type: string }>;
+  routePoints?: Array<[number, number]>;
   className?: string;
 }
 
@@ -30,6 +32,8 @@ export function DeliveryMap({
   pickupLocation,
   deliveryLocation,
   driverLocation,
+  hubs = [],
+  routePoints = [],
   className = "",
 }: DeliveryMapProps) {
   const mapRef = useRef<L.Map | null>(null);
@@ -64,6 +68,35 @@ export function DeliveryMap({
 
     const bounds: L.LatLngExpression[] = [];
 
+    // Add Hub markers (Relay Points)
+    hubs.forEach((hub) => {
+      // Don't duplicate markers if it's already a pickup/delivery location handled below
+      const hubIcon = L.divIcon({
+        html: `
+          <div class="flex items-center justify-center w-8 h-8 bg-amber-100 rounded-full shadow-md border-2 border-amber-500">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+          </div>
+        `,
+        className: "custom-marker",
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
+      });
+
+      const marker = L.marker([hub.latitude, hub.longitude], {
+        icon: hubIcon,
+      }).addTo(map);
+
+      marker.bindPopup(`
+        <div class="p-1">
+          <div class="font-bold text-xs">🏪 Point Relais</div>
+          <div class="text-[10px] text-gray-600">${hub.name}</div>
+        </div>
+      `);
+    });
+
     // Add pickup marker
     if (pickupLocation) {
       const pickupIcon = L.divIcon({
@@ -82,6 +115,7 @@ export function DeliveryMap({
 
       const marker = L.marker([pickupLocation.latitude, pickupLocation.longitude], {
         icon: pickupIcon,
+        zIndexOffset: 1000
       }).addTo(map);
 
       marker.bindPopup(`
@@ -112,6 +146,7 @@ export function DeliveryMap({
 
       const marker = L.marker([deliveryLocation.latitude, deliveryLocation.longitude], {
         icon: deliveryIcon,
+        zIndexOffset: 1000
       }).addTo(map);
 
       marker.bindPopup(`
@@ -145,6 +180,7 @@ export function DeliveryMap({
 
       const marker = L.marker([driverLocation.latitude, driverLocation.longitude], {
         icon: driverIcon,
+        zIndexOffset: 2000
       }).addTo(map);
 
       marker.bindPopup(`
@@ -157,22 +193,27 @@ export function DeliveryMap({
       bounds.push([driverLocation.latitude, driverLocation.longitude]);
     }
 
-    // Draw route line
-    if (pickupLocation && deliveryLocation) {
-      const routePoints: L.LatLngExpression[] = [
+    // Draw route line - ORANGE for navigation
+    if (routePoints.length > 0) {
+      L.polyline(routePoints, {
+        color: "#f97316", // Orange-500
+        weight: 6,
+        opacity: 0.8,
+        lineJoin: 'round'
+      }).addTo(map);
+
+      routePoints.forEach(p => bounds.push(p));
+    } else if (pickupLocation && deliveryLocation) {
+      // Fallback to simple line if real geometry not provided
+      const simplePoints: L.LatLngExpression[] = [
         [pickupLocation.latitude, pickupLocation.longitude],
+        [deliveryLocation.latitude, deliveryLocation.longitude]
       ];
 
-      if (driverLocation) {
-        routePoints.push([driverLocation.latitude, driverLocation.longitude]);
-      }
-
-      routePoints.push([deliveryLocation.latitude, deliveryLocation.longitude]);
-
-      L.polyline(routePoints, {
-        color: "#8b5cf6",
-        weight: 3,
-        opacity: 0.7,
+      L.polyline(simplePoints, {
+        color: "#f97316",
+        weight: 4,
+        opacity: 0.6,
         dashArray: "10, 10",
       }).addTo(map);
     }

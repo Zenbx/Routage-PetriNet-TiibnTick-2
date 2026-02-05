@@ -451,6 +451,14 @@ class DeliveryAPI {
     });
   }
 
+  async getArcs(): Promise<any[]> {
+    return this.request<any[]>("/v1/graph/arcs", { method: "GET" });
+  }
+
+  async getNodes(): Promise<any[]> {
+    return this.request<any[]>("/v1/graph/nodes", { method: "GET" });
+  }
+
   async findShortestPath(originId: string, destinationId: string): Promise<any> {
     return this.request<any>("/v1/routing/shortest-path", {
       method: "POST",

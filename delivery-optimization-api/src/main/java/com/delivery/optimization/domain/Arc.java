@@ -24,5 +24,6 @@ public class Arc {
     private Double weatherImpact;
     private Double fuelCost;
     private Double trafficFactor; // 1.0 = normal, >1.0 = congested
+    private String geometry; // Format: "lat,lng;lat,lng;..." or Polyline
     private Instant lastUpdated;
 }

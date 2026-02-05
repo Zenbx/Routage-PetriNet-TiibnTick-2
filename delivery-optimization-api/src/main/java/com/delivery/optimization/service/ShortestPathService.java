@@ -14,6 +14,8 @@ import com.delivery.optimization.repository.DriverRepository;
 import com.delivery.optimization.domain.Driver;
 import reactor.core.publisher.Mono;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -73,6 +75,7 @@ public class ShortestPathService {
                                 double fuelCons = driver.getFuelConsumption() != null ? driver.getFuelConsumption()
                                         : 8.0;
 
+                                List<List<Double>> geometryPath = new ArrayList<>();
                                 List<String> pathNodes = result.getPath();
 
                                 for (int i = 0; i < pathNodes.size() - 1; i++) {
@@ -83,6 +86,7 @@ public class ShortestPathService {
                                             .filter(a -> a.getDestinationId().equals(to))
                                             .findFirst()
                                             .orElse(null);
+
                                     if (edge != null) {
                                         totalDistance += edge.getDistance();
 
@@ -95,13 +99,26 @@ public class ShortestPathService {
                                         totalPenibilityCost += edge.getPenibility() * weights.getGamma();
                                         totalWeatherCost += edge.getWeatherImpact() * weights.getDelta();
 
-                                        // Fuel Cost = (Consommation / 100) * Distance (simulé ici en "points" ou coût
-                                        // monétaire)
-                                        // On peut ajuster selon fuelCost de l'arc (pente, etc)
                                         double baseFuel = (fuelCons / 100.0) * edge.getDistance();
                                         totalFuelCost += (baseFuel
                                                 + (edge.getFuelCost() != null ? edge.getFuelCost() : 0))
                                                 * weights.getEta();
+
+                                        // Accumuler la géométrie
+                                        if (edge.getGeometry() != null && !edge.getGeometry().isEmpty()) {
+                                            geometryPath.addAll(parseGeometry(edge.getGeometry()));
+                                        } else {
+                                            // Fallback: ligne droite entre les deux nœuds si pas de géométrie
+                                            Node nFrom = nodes.get(from);
+                                            Node nTo = nodes.get(to);
+                                            if (nFrom != null && i == 0) {
+                                                geometryPath
+                                                        .add(Arrays.asList(nFrom.getLatitude(), nFrom.getLongitude()));
+                                            }
+                                            if (nTo != null) {
+                                                geometryPath.add(Arrays.asList(nTo.getLatitude(), nTo.getLongitude()));
+                                            }
+                                        }
                                     }
                                 }
 
@@ -118,6 +135,7 @@ public class ShortestPathService {
                                         .costBreakdown(breakdown)
                                         .estimatedTime(estimatedTime)
                                         .distance(totalDistance)
+                                        .geometryPath(geometryPath)
                                         .build());
                             });
                 });
@@ -153,5 +171,27 @@ public class ShortestPathService {
                     return driverRepository.save(driver);
                 })
                 .then();
+    }
+
+    private List<List<Double>> parseGeometry(String geometry) {
+        List<List<Double>> points = new ArrayList<>();
+        if (geometry == null || geometry.isEmpty())
+            return points;
+
+        // On supporte le format simple "lat,lng;lat,lng;..."
+        String[] coordinatePairs = geometry.split(";");
+        for (String pair : coordinatePairs) {
+            String[] parts = pair.split(",");
+            if (parts.length == 2) {
+                try {
+                    double lat = Double.parseDouble(parts[0].trim());
+                    double lng = Double.parseDouble(parts[1].trim());
+                    points.add(Arrays.asList(lat, lng));
+                } catch (NumberFormatException e) {
+                    // Ignore invalid coordinates
+                }
+            }
+        }
+        return points;
     }
 }

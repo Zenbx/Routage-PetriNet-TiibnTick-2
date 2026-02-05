@@ -17,4 +17,5 @@ public class ShortestPathResponse {
     private Map<String, Double> costBreakdown;
     private double estimatedTime;
     private double distance;
+    private List<List<Double>> geometryPath; // Real road waypoints
 }

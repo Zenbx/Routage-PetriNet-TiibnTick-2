@@ -28,6 +28,11 @@ public class TrackingInfoDTO {
     private Instant pickedUpAt;
     private Instant deliveredAt;
 
+    // Informations du livreur
+    private String driverName;
+    private String driverPhone;
+    private String licensePlate;
+
     // Informations limitées (sans numéros de téléphone)
     private String senderName;
     private String senderAddress;

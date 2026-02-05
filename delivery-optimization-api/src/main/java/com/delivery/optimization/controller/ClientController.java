@@ -4,6 +4,7 @@ import com.delivery.optimization.domain.Delivery;
 import com.delivery.optimization.dto.*;
 import com.delivery.optimization.dto.LocationDTO;
 import com.delivery.optimization.domain.Delivery.DeliveryStatus;
+import com.delivery.optimization.domain.Driver;
 import com.delivery.optimization.repository.DeliveryRepository;
 import com.delivery.optimization.repository.NodeRepository;
 import com.delivery.optimization.service.ETAService;
@@ -248,24 +249,31 @@ public class ClientController {
                                 .estimatedDeliveryTime(delivery.getDeadline())
                                 .price(delivery.getPrice());
 
-                // Coordonnées du livreur si assigné
-                Mono<LocationDTO> driverLocMono = (delivery.getDriverId() != null)
+                // Coordonnées et informations du livreur si assigné
+                Mono<Driver> driverMono = (delivery.getDriverId() != null)
                                 ? driverRepository.findById(delivery.getDriverId())
-                                                .map(driver -> LocationDTO.builder()
-                                                                .latitude(driver.getCurrentLatitude())
-                                                                .longitude(driver.getCurrentLongitude())
-                                                                .address("Position en temps réel")
-                                                                .build())
-                                                .defaultIfEmpty(new LocationDTO())
-                                : Mono.just(new LocationDTO());
+                                : Mono.empty();
+
+                Mono<LocationDTO> driverLocMono = driverMono
+                                .map(driver -> LocationDTO.builder()
+                                                .latitude(driver.getCurrentLatitude())
+                                                .longitude(driver.getCurrentLongitude())
+                                                .address("Position en temps réel")
+                                                .build())
+                                .defaultIfEmpty(new LocationDTO());
 
                 // Résolution des Hubs (Points Relais)
                 List<String> hubIds = new ArrayList<>();
-                if (delivery.getPickupLocationId() != null && delivery.getPickupLocationId().startsWith("RELAY_")) {
-                        hubIds.add(delivery.getPickupLocationId());
+                String pId = delivery.getPickupLocationId() != null ? delivery.getPickupLocationId()
+                                : delivery.getPickupNodeId();
+                String dId = delivery.getDeliveryLocationId() != null ? delivery.getDeliveryLocationId()
+                                : delivery.getDropoffNodeId();
+
+                if (pId != null && pId.startsWith("RELAY_")) {
+                        hubIds.add(pId);
                 }
-                if (delivery.getDeliveryLocationId() != null && delivery.getDeliveryLocationId().startsWith("RELAY_")) {
-                        hubIds.add(delivery.getDeliveryLocationId());
+                if (dId != null && dId.startsWith("RELAY_")) {
+                        hubIds.add(dId);
                 }
 
                 Mono<List<LocationDTO>> hubsMono = Flux.fromIterable(hubIds)
@@ -278,17 +286,19 @@ public class ClientController {
                                 .collectList();
 
                 return Mono.zip(
-                                resolveLocation(delivery.getPickupLocationId(), delivery.getSenderAddress())
+                                resolveLocation(pId, delivery.getSenderAddress())
                                                 .defaultIfEmpty(new LocationDTO()),
-                                resolveLocation(delivery.getDeliveryLocationId(), delivery.getRecipientAddress())
+                                resolveLocation(dId, delivery.getRecipientAddress())
                                                 .defaultIfEmpty(new LocationDTO()),
                                 driverLocMono,
-                                hubsMono)
+                                hubsMono,
+                                driverMono.defaultIfEmpty(new Driver()))
                                 .map(tuple -> {
                                         LocationDTO pickup = tuple.getT1();
                                         LocationDTO deliveryLoc = tuple.getT2();
                                         LocationDTO driverLocation = tuple.getT3();
                                         List<LocationDTO> hubs = tuple.getT4();
+                                        Driver driverData = tuple.getT5();
 
                                         if (pickup.getLatitude() != null)
                                                 builder.pickupLocation(pickup);
@@ -296,6 +306,12 @@ public class ClientController {
                                                 builder.deliveryLocation(deliveryLoc);
                                         if (driverLocation.getLatitude() != null)
                                                 builder.driverLocation(driverLocation);
+
+                                        if (driverData != null) {
+                                                builder.driverName(driverData.getName());
+                                                builder.driverPhone(driverData.getPhone());
+                                                builder.licensePlate(driverData.getLicensePlate());
+                                        }
 
                                         builder.hubs(hubs);
 
@@ -323,8 +339,10 @@ public class ClientController {
          */
         private Mono<TrackingInfoDTO> enrichWithRouteAndETAReactive(Delivery delivery,
                         TrackingInfoDTO.TrackingInfoDTOBuilder builder) {
-                String originId = delivery.getPickupLocationId();
-                String destId = delivery.getDeliveryLocationId();
+                String originId = delivery.getPickupLocationId() != null ? delivery.getPickupLocationId()
+                                : delivery.getPickupNodeId();
+                String destId = delivery.getDeliveryLocationId() != null ? delivery.getDeliveryLocationId()
+                                : delivery.getDropoffNodeId();
 
                 if (originId == null || destId == null) {
                         return Mono.just(builder.build());
@@ -344,13 +362,40 @@ public class ClientController {
                 // Calculer l'itinéraire reactively
                 Mono<TrackingInfoDTO.TrackingInfoDTOBuilder> routeMono = shortestPathService
                                 .calculateShortestPath(routeRequest)
+                                .doOnNext(path -> log.debug("Calculated path for {}: {} nodes, {} km",
+                                                delivery.getTrackingCode(),
+                                                path.getPath() != null ? path.getPath().size() : 0,
+                                                path.getDistance()))
                                 .flatMap(pathResponse -> {
-                                        if (pathResponse == null || pathResponse.getPath() == null) {
+                                        if (pathResponse == null || (pathResponse.getPath() == null
+                                                        && pathResponse.getGeometryPath() == null)) {
+                                                log.warn("Path not found for delivery {}", delivery.getTrackingCode());
                                                 return Mono.just(builder);
                                         }
 
+                                        // Si on a déjà la géométrie détaillée (routes réelles), on l'utilise
+                                        // directement
+                                        if (pathResponse.getGeometryPath() != null
+                                                        && !pathResponse.getGeometryPath().isEmpty()) {
+                                                builder.routePath(pathResponse.getGeometryPath());
+                                                builder.totalDistance(pathResponse.getDistance());
+                                                log.debug("Enriched tracking info for {} with {} detailed road points",
+                                                                delivery.getTrackingCode(),
+                                                                pathResponse.getGeometryPath().size());
+                                                return Mono.just(builder);
+                                        }
+
+                                        // Sinon (fallback), on résout les nodes un par un (lignes droites entre
+                                        // nodes)
                                         return Flux.fromIterable(pathResponse.getPath())
-                                                        .flatMap(nodeId -> resolveLocation(nodeId, null))
+                                                        .flatMap(nodeId -> resolveLocation(nodeId, null)
+                                                                        .doOnNext(loc -> {
+                                                                                if (loc.getLatitude() == null) {
+                                                                                        log.warn("Failed to resolved coordinates for node {} in path of {}",
+                                                                                                        nodeId,
+                                                                                                        delivery.getTrackingCode());
+                                                                                }
+                                                                        }))
                                                         .collectList()
                                                         .map(locations -> {
                                                                 List<List<Double>> routePath = new ArrayList<>();
@@ -366,9 +411,21 @@ public class ClientController {
                                                                         builder.routePath(routePath);
                                                                         builder.totalDistance(
                                                                                         pathResponse.getDistance());
+                                                                        log.debug("Enriched tracking info for {} with {} node-to-node points",
+                                                                                        delivery.getTrackingCode(),
+                                                                                        routePath.size());
+                                                                } else {
+                                                                        log.warn("Empty route path coordinates for {}",
+                                                                                        delivery.getTrackingCode());
                                                                 }
                                                                 return builder;
                                                         });
+                                })
+                                .onErrorResume(e -> {
+                                        log.error("Error calculating path for delivery {}: {}",
+                                                        delivery.getTrackingCode(), e.getMessage());
+                                        return Mono.just(builder); // Ne pas bloquer tout le tracking si l'itinéraire
+                                                                   // échoue
                                 })
                                 .defaultIfEmpty(builder);
 

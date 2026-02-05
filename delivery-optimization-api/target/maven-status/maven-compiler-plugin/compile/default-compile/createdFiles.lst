@@ -40,12 +40,10 @@ com\delivery\optimization\algorithm\CostFunction.class
 com\delivery\optimization\dto\DriverLoginRequest$DriverLoginRequestBuilder.class
 com\delivery\optimization\domain\RerouteEvent.class
 com\delivery\optimization\config\OpenApiConfig.class
-com\delivery\optimization\controller\ClientController.class
 com\delivery\optimization\dto\ShortestPathResponse$ShortestPathResponseBuilder.class
 com\delivery\optimization\domain\Node.class
 com\delivery\optimization\domain\ETAHistory.class
 com\delivery\optimization\repository\RerouteEventRepository.class
-com\delivery\optimization\service\ReroutingService.class
 com\delivery\optimization\config\WebFluxWebSocketConfig.class
 com\delivery\optimization\controller\DriverController.class
 com\delivery\optimization\controller\GraphController.class
@@ -61,7 +59,6 @@ com\delivery\optimization\dto\DeliveryDetailsDTO$DeliveryDetailsDTOBuilder.class
 com\delivery\optimization\controller\TourController.class
 com\delivery\optimization\repository\ArcRepository.class
 com\delivery\optimization\domain\Arc$ArcBuilder.class
-com\delivery\optimization\controller\RoutingController.class
 com\delivery\optimization\dto\TrackingInfoDTO$TrackingInfoDTOBuilder.class
 com\delivery\optimization\controller\NotificationController.class
 com\delivery\optimization\domain\Notification$NotificationStatus.class
@@ -86,7 +83,6 @@ com\delivery\optimization\domain\Tour$TourStatus.class
 com\delivery\optimization\domain\Driver$DriverBuilder.class
 com\delivery\optimization\dto\ShortestPathResponse.class
 com\delivery\optimization\dto\LocationDTO.class
-com\delivery\optimization\controller\DeliveryController.class
 com\delivery\optimization\domain\Driver$DriverStatus.class
 com\delivery\optimization\dto\DriverRegisterRequest.class
 com\delivery\optimization\dto\RerouteResponse$RerouteResponseBuilder.class
@@ -133,7 +129,6 @@ com\delivery\optimization\controller\TacticalController.class
 com\delivery\optimization\domain\RerouteEvent$RerouteEventBuilder.class
 com\delivery\optimization\DeliveryOptimizationApplication.class
 com\delivery\optimization\dto\ETAUpdateRequest.class
-com\delivery\optimization\service\ShortestPathService.class
 com\delivery\optimization\controller\DriverAuthController.class
 com\delivery\optimization\dto\ShortestPathRequest$CostWeights.class
 com\delivery\optimization\service\DriverAuthService.class

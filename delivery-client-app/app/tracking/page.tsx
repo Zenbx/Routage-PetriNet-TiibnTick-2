@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { Search, QrCode, Package, MapPin, Clock, User, ArrowLeft } from "lucide-react";
+import { Search, QrCode, Package, MapPin, Clock, User, ArrowLeft, Truck } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api, formatPrice, formatDistance, type TrackingResponse } from "@/lib/api";
@@ -295,6 +295,34 @@ function TrackingContent() {
                   </div>
                 </div>
               </div>
+
+              {/* Driver Info Section */}
+              {trackingInfo.driverName && (
+                <div className="p-4 bg-purple-500/5 rounded-xl border border-purple-500/20 flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-purple-500/10 flex items-center justify-center flex-shrink-0">
+                    <Truck className="w-6 h-6 text-purple-500" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-text-muted text-xs uppercase tracking-wider font-bold mb-1">Livreur Assigné</div>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-white font-bold text-lg">{trackingInfo.driverName}</div>
+                        {trackingInfo.licensePlate && (
+                          <div className="text-text-muted text-xs">Véhicule: {trackingInfo.licensePlate}</div>
+                        )}
+                      </div>
+                      {trackingInfo.driverPhone && (
+                        <a
+                          href={`tel:${trackingInfo.driverPhone}`}
+                          className="px-4 py-2 bg-purple-500 text-white rounded-lg text-sm font-bold hover:bg-purple-600 transition-colors"
+                        >
+                          Appeler
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Route and ETA Info */}
               {(trackingInfo.totalDistance || trackingInfo.estimatedArrival) && (

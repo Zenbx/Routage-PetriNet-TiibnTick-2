@@ -29,5 +29,7 @@
     <include file="classpath:db/changelog/v1/022-add-driver-vehicle-metrics.sql" relativeToChangelogFile="false"/>
     <include file="classpath:db/changelog/v1/023-fix-seed-deliveries.sql" relativeToChangelogFile="false"/>
     <include file="classpath:db/changelog/v1/024-sync-location-ids.sql" relativeToChangelogFile="false"/>
+    <include file="classpath:db/changelog/v1/025-connect-relay-network.sql" relativeToChangelogFile="false"/>
+    <include file="classpath:db/changelog/v1/026-add-arc-geometry.sql" relativeToChangelogFile="false"/>
 
 </databaseChangeLog>

@@ -54,6 +54,9 @@ export interface TrackingResponse {
   acceptedAt?: string;
   pickedUpAt?: string;
   deliveredAt?: string;
+  driverName?: string;
+  driverPhone?: string;
+  licensePlate?: string;
   senderName: string;
   senderAddress: string;
   senderLandmark?: string;

@@ -318,42 +318,96 @@ export default function DeliveryDetailsPage() {
         </div>
 
         {/* Map Section */}
-        <div className={`card ${isFullScreen ? "fixed inset-0 z-[100] m-0 rounded-none h-screen w-screen" : ""}`} id="map-section">
-          <div className="flex items-center justify-between mb-4 px-2">
-            <h2 className="font-bold text-lg flex items-center gap-2">
-              <MapPin className="w-5 h-5 text-primary" />
-              {isFullScreen ? "Navigation Plein Écran" : "Carte de navigation"}
-            </h2>
+        <div className={isFullScreen ? "fixed inset-0 z-[100] m-0 p-0 overflow-hidden bg-black" : "card"} id="map-section">
+          {/* Header & Controls Overlay (Only shown when not full screen or as floaters) */}
+          {!isFullScreen && (
+            <div className="flex items-center justify-between mb-4 px-2">
+              <h2 className="font-bold text-lg flex items-center gap-2 text-white">
+                <MapPin className="w-5 h-5 text-primary" />
+                Carte de navigation
+              </h2>
 
-            <div className="flex items-center gap-4">
-              {(isNavigating || isFullScreen) && (
-                <div className="flex gap-4 animate-in fade-in slide-in-from-top-2 bg-background/80 backdrop-blur-md px-3 py-1 rounded-lg border border-border shadow-sm">
-                  <div className="flex flex-col items-end">
-                    <span className="text-[10px] uppercase text-text-muted">Reste</span>
-                    <span className="font-bold text-orange-500">{delivery.distance.toFixed(1)} km</span>
+              <div className="flex items-center gap-4">
+                {isNavigating && (
+                  <div className="flex gap-4 animate-in fade-in slide-in-from-top-2 bg-background/80 backdrop-blur-md px-3 py-1 rounded-lg border border-border shadow-sm">
+                    <div className="flex flex-col items-end">
+                      <span className="text-[10px] uppercase text-text-muted">Reste</span>
+                      <span className="font-bold text-orange-500">{delivery.distance.toFixed(1)} km</span>
+                    </div>
+                    <div className="flex flex-col items-end">
+                      <span className="text-[10px] uppercase text-text-muted">ETA</span>
+                      <span className="font-bold text-orange-500">{delivery.estimatedDuration}</span>
+                    </div>
                   </div>
-                  <div className="flex flex-col items-end">
-                    <span className="text-[10px] uppercase text-text-muted">ETA</span>
-                    <span className="font-bold text-orange-500">{delivery.estimatedDuration}</span>
+                )}
+                <button
+                  onClick={toggleFullScreen}
+                  className="p-2 rounded-lg bg-background-light hover:bg-primary/10 transition-colors"
+                  title="Plein écran"
+                >
+                  <Truck className="w-5 h-5 text-primary" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className={`${isFullScreen ? "h-screen w-screen" : isNavigating ? "h-[500px]" : "h-[300px]"} relative transition-all duration-500`}>
+            {/* Transparent Floating Overlays (Full Screen) */}
+            {isFullScreen && (
+              <>
+                {/* Back / Close Button */}
+                <button
+                  onClick={toggleFullScreen}
+                  className="absolute top-6 left-6 z-[1000] p-3 rounded-full bg-black/40 backdrop-blur-md text-white border border-white/20 hover:bg-black/60 transition-all shadow-xl"
+                  title="Quitter le plein écran"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+
+                {/* Floating Info Bar (Glassmorphism) */}
+                {(isNavigating || true) && (
+                  <div className="absolute top-6 left-1/2 -translate-x-1/2 z-[1000] flex gap-8 px-8 py-4 rounded-2xl bg-black/40 backdrop-blur-xl border border-white/10 shadow-2xl animate-in fade-in zoom-in-95 duration-500">
+                    <div className="flex flex-col items-center">
+                      <span className="text-[10px] uppercase tracking-wider text-white/60 font-medium">Distance restante</span>
+                      <span className="text-2xl font-black text-orange-500">{delivery.distance.toFixed(1)} <span className="text-sm font-normal text-white/40">km</span></span>
+                    </div>
+                    <div className="w-px h-10 bg-white/10" />
+                    <div className="flex flex-col items-center">
+                      <span className="text-[10px] uppercase tracking-wider text-white/60 font-medium">Temps estimé (ETA)</span>
+                      <span className="text-2xl font-black text-orange-500">{delivery.estimatedDuration}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Bottom Legend Overlay */}
+                <div className="absolute bottom-6 left-6 z-[1000] bg-black/40 backdrop-blur-md p-5 rounded-2xl border border-white/10 shadow-2xl space-y-3 min-w-[200px]">
+                  <p className="font-bold text-xs text-white pb-2 border-b border-white/10">LÉGENDE NAVIGATION</p>
+                  <div className="flex items-center gap-3 text-xs text-white/80">
+                    <div className="w-3 h-3 bg-blue-500 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)]"></div>
+                    <span>Départ</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-white/80">
+                    <div className="w-3 h-3 bg-green-500 rounded-full shadow-[0_0_10px_rgba(34,197,94,0.5)]"></div>
+                    <span>Destination</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-white/80">
+                    <div className="w-3 h-3 bg-amber-500 rounded-full shadow-[0_0_10px_rgba(245,158,11,0.5)]"></div>
+                    <span>Points Relais</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-white/80">
+                    <div className="w-5 h-1 bg-orange-500 rounded-full shadow-[0_0_10px_rgba(249,115,22,0.5)]"></div>
+                    <span>Fils d'itinéraire</span>
                   </div>
                 </div>
-              )}
 
-              <button
-                onClick={toggleFullScreen}
-                className="p-2 rounded-lg bg-background-light hover:bg-primary/10 transition-colors"
-                title={isFullScreen ? "Réduire" : "Plein écran"}
-              >
-                {isFullScreen ? (
-                  <X className="w-5 h-5" />
-                ) : (
-                  <Truck className="w-5 h-5 text-primary" />
-                )}
-              </button>
-            </div>
-          </div>
+                {/* Status Badge in Full Screen */}
+                <div className="absolute top-6 right-6 z-[1000] px-4 py-2 rounded-full bg-orange-500/20 backdrop-blur-md border border-orange-500/40 text-orange-500 font-bold text-xs flex items-center gap-2">
+                  <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse" />
+                  NAVIGATION ACTIVE
+                </div>
+              </>
+            )}
 
-          <div className={`${isFullScreen ? "h-[calc(100vh-80px)]" : isNavigating ? "h-[500px]" : "h-[300px]"} relative transition-all duration-500`}>
             <DeliveryMap
               pickupLocation={delivery.pickupLocation}
               deliveryLocation={delivery.deliveryLocation}
@@ -361,29 +415,6 @@ export default function DeliveryDetailsPage() {
               routePoints={routeGeometry}
               className="w-full h-full"
             />
-
-            {/* Legend Overlay in Fullscreen */}
-            {isFullScreen && (
-              <div className="absolute bottom-6 left-6 z-[1000] bg-background/90 backdrop-blur-md p-4 rounded-xl border border-border shadow-xl space-y-2">
-                <p className="font-bold text-xs mb-2">Légende</p>
-                <div className="flex items-center gap-2 text-[10px]">
-                  <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                  <span>Point de départ</span>
-                </div>
-                <div className="flex items-center gap-2 text-[10px]">
-                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                  <span>Arrivée</span>
-                </div>
-                <div className="flex items-center gap-2 text-[10px]">
-                  <div className="w-3 h-3 bg-amber-500 rounded-full"></div>
-                  <span>Point Relais (Relay Point)</span>
-                </div>
-                <div className="flex items-center gap-2 text-[10px]">
-                  <div className="w-3 h-1 bg-orange-500 rounded-full"></div>
-                  <span>Itinéraire Actif</span>
-                </div>
-              </div>
-            )}
           </div>
 
           {!isFullScreen && (

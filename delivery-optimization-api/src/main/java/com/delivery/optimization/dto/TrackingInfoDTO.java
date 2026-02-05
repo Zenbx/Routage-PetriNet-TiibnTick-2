@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.util.List;
 
 /**
  * DTO pour les informations publiques de tracking
@@ -46,4 +47,11 @@ public class TrackingInfoDTO {
     // Package info
     private String packageDescription;
     private Double weight;
+
+    // Route visualization and progress tracking
+    private List<List<Double>> routePath; // [[lat, lng], [lat, lng], ...] - GPS coordinates of route
+    private Double totalDistance; // Total route distance in km
+    private Double remainingDistance; // Remaining distance to destination in km
+    private String estimatedArrival; // ISO 8601 timestamp for ETA
+    private Double price; // Delivery price
 }

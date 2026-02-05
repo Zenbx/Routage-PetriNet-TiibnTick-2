@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { Search, QrCode, Package, MapPin, Clock, User, ArrowLeft } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { api } from "@/lib/api";
+import { api, formatPrice, formatDistance, type TrackingResponse } from "@/lib/api";
 import Link from "next/link";
 import loadDynamic from "next/dynamic";
 
@@ -21,7 +21,7 @@ function TrackingContent() {
 
   const [trackingCode, setTrackingCode] = useState(codeFromUrl);
   const [loading, setLoading] = useState(false);
-  const [trackingInfo, setTrackingInfo] = useState<any>(null);
+  const [trackingInfo, setTrackingInfo] = useState<TrackingResponse | null>(null);
   const [error, setError] = useState("");
   const router = useRouter();
 
@@ -194,6 +194,41 @@ function TrackingContent() {
                   </div>
                 </div>
               </div>
+
+              {/* Route and ETA Info */}
+              {(trackingInfo.totalDistance || trackingInfo.estimatedArrival) && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 p-4 bg-background-light rounded-xl border border-border/50">
+                  {trackingInfo.totalDistance && (
+                    <div>
+                      <div className="text-text-muted text-xs mb-1">Distance totale</div>
+                      <div className="text-white font-bold text-lg">{formatDistance(trackingInfo.totalDistance * 1000)}</div>
+                    </div>
+                  )}
+                  {trackingInfo.remainingDistance != null && (
+                    <div>
+                      <div className="text-text-muted text-xs mb-1">Distance restante</div>
+                      <div className="text-primary font-bold text-lg">{formatDistance(trackingInfo.remainingDistance * 1000)}</div>
+                    </div>
+                  )}
+                  {trackingInfo.estimatedArrival && (
+                    <div className="col-span-2">
+                      <div className="text-text-muted text-xs mb-1">Arrivée estimée</div>
+                      <div className="text-green-400 font-bold text-lg">
+                        {new Date(trackingInfo.estimatedArrival).toLocaleString("fr-FR", {
+                          dateStyle: "short",
+                          timeStyle: "short"
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  {trackingInfo.price != null && (
+                    <div>
+                      <div className="text-text-muted text-xs mb-1">Prix</div>
+                      <div className="text-white font-bold text-lg">{formatPrice(trackingInfo.price)}</div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Map */}
@@ -207,6 +242,7 @@ function TrackingContent() {
                   pickupLocation={trackingInfo.pickupLocation}
                   deliveryLocation={trackingInfo.deliveryLocation}
                   driverLocation={trackingInfo.driverLocation}
+                  routePoints={trackingInfo.routePath || []}
                   className="h-[400px]"
                 />
                 <div className="mt-4 grid grid-cols-3 gap-2 text-xs">

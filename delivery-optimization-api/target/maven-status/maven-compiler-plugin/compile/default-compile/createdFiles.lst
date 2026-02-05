@@ -40,7 +40,6 @@ com\delivery\optimization\algorithm\CostFunction.class
 com\delivery\optimization\dto\DriverLoginRequest$DriverLoginRequestBuilder.class
 com\delivery\optimization\domain\RerouteEvent.class
 com\delivery\optimization\config\OpenApiConfig.class
-com\delivery\optimization\controller\ClientController.class
 com\delivery\optimization\dto\ShortestPathResponse$ShortestPathResponseBuilder.class
 com\delivery\optimization\domain\Node.class
 com\delivery\optimization\domain\ETAHistory.class

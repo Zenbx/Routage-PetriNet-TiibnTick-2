@@ -3,6 +3,9 @@ package com.delivery.optimization.controller;
 import com.delivery.optimization.domain.Delivery;
 import com.delivery.optimization.dto.*;
 import com.delivery.optimization.repository.DeliveryRepository;
+import com.delivery.optimization.repository.NodeRepository;
+import com.delivery.optimization.service.ETAService;
+import com.delivery.optimization.service.ShortestPathService;
 import com.delivery.optimization.service.StateTransitionService;
 import com.delivery.optimization.service.TrackingCodeGenerator;
 import io.swagger.v3.oas.annotations.Operation;
@@ -17,6 +20,9 @@ import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -33,6 +39,9 @@ public class ClientController {
         private final DeliveryRepository deliveryRepository;
         private final TrackingCodeGenerator trackingCodeGenerator;
         private final StateTransitionService stateTransitionService;
+        private final ShortestPathService shortestPathService;
+        private final ETAService etaService;
+        private final NodeRepository nodeRepository;
 
         /**
          * Créer une nouvelle demande de livraison
@@ -197,7 +206,7 @@ public class ClientController {
          * Mapping Delivery → TrackingInfoDTO (informations publiques limitées)
          */
         private TrackingInfoDTO mapToTrackingDTO(Delivery delivery) {
-                return TrackingInfoDTO.builder()
+                TrackingInfoDTO.TrackingInfoDTOBuilder builder = TrackingInfoDTO.builder()
                                 .trackingCode(delivery.getTrackingCode())
                                 .status(delivery.getStatus())
                                 .createdAt(delivery.getCreatedAt())
@@ -211,16 +220,125 @@ public class ClientController {
                                 .packageDescription(delivery.getPackageDescription())
                                 .weight(delivery.getWeight())
                                 .estimatedDeliveryTime(delivery.getDeadline())
+                                .price(delivery.getPrice())
                                 // Coordonnées GPS pour la carte
                                 .pickupLocation(parseLocation(delivery.getPickupLocationId(),
                                                 delivery.getSenderAddress()))
                                 .deliveryLocation(parseLocation(delivery.getDeliveryLocationId(),
                                                 delivery.getRecipientAddress()))
-                                .driverLocation(null) // TODO: Position en temps réel via WebSocket
-                                // TODO: Ajouter currentLocation et progressPercentage via GPS tracking
-                                .currentLocation(null) // À implémenter avec WebSocket
-                                .progressPercentage(null) // À calculer depuis position actuelle
-                                .build();
+                                .driverLocation(null); // TODO: Position en temps réel via WebSocket
+
+                // For active deliveries (PICKED_UP, IN_TRANSIT), calculate route and ETA
+                if (delivery.getStatus() == Delivery.DeliveryStatus.PICKED_UP ||
+                                delivery.getStatus() == Delivery.DeliveryStatus.IN_TRANSIT) {
+                        try {
+                                enrichWithRouteAndETA(delivery, builder);
+                        } catch (Exception e) {
+                                log.warn("Failed to enrich tracking data with route/ETA for {}: {}",
+                                                delivery.getTrackingCode(), e.getMessage());
+                        }
+                }
+
+                return builder.build();
+        }
+
+        /**
+         * Enrich tracking DTO with route path and ETA information
+         */
+        private void enrichWithRouteAndETA(Delivery delivery, TrackingInfoDTO.TrackingInfoDTOBuilder builder) {
+                try {
+                        // Get origin and destination
+                        String originId = delivery.getPickupLocationId();
+                        String destId = delivery.getDeliveryLocationId();
+
+                        if (originId == null || destId == null) {
+                                log.debug("Missing location IDs for route calculation");
+                                return;
+                        }
+
+                        // Calculate shortest path
+                        var routeRequest = new ShortestPathRequest();
+                        routeRequest.setOrigin(originId);
+                        routeRequest.setDestination(destId);
+                        routeRequest.setDriverId(delivery.getDriverId());
+
+                        ShortestPathRequest.CostWeights defaultWeights = new ShortestPathRequest.CostWeights();
+                        defaultWeights.setAlpha(1.0);
+                        defaultWeights.setBeta(1.5);
+                        defaultWeights.setGamma(1.0);
+                        defaultWeights.setDelta(1.2);
+                        defaultWeights.setEta(1.0);
+                        routeRequest.setCostWeights(defaultWeights);
+
+                        var pathResponse = shortestPathService.calculateShortestPath(routeRequest).block();
+
+                        if (pathResponse != null && pathResponse.getPath() != null) {
+                                // Convert node IDs to GPS coordinates
+                                List<List<Double>> routePath = new ArrayList<>();
+                                for (String nodeId : pathResponse.getPath()) {
+                                        LocationDTO loc = parseLocationForNode(nodeId, delivery);
+                                        if (loc != null && loc.getLatitude() != null && loc.getLongitude() != null) {
+                                                routePath.add(Arrays.asList(loc.getLatitude(),
+                                                                loc.getLongitude()));
+                                        }
+                                }
+
+                                if (!routePath.isEmpty()) {
+                                        builder.routePath(routePath);
+                                        builder.totalDistance(pathResponse.getDistance());
+                                }
+                        }
+
+                        // Get ETA and remaining distance
+                        var etaStats = etaService.getLatestStats(delivery.getId()).block();
+                        if (etaStats != null) {
+                                builder.remainingDistance(etaStats.getRemainingDistance());
+                                builder.estimatedArrival(etaStats.getEtaMin()); // Using min ETA
+
+                                // Calculate progress percentage
+                                if (etaStats.getKalmanState() != null) {
+                                        double distCovered = etaStats.getKalmanState().getDistanceCovered();
+                                        builder.progressPercentage(Math.min(100.0, distCovered * 100.0));
+                                }
+                        }
+                } catch (Exception e) {
+                        log.error("Error enriching route data: {}", e.getMessage(), e);
+                }
+        }
+
+        /**
+         * Parse location for a node in the route path
+         */
+        private LocationDTO parseLocationForNode(String nodeId, Delivery delivery) {
+                // First check if it matches pickup or delivery location
+                if (nodeId.equals(delivery.getPickupLocationId())) {
+                        return parseLocation(delivery.getPickupLocationId(), delivery.getSenderAddress());
+                }
+                if (nodeId.equals(delivery.getDeliveryLocationId())) {
+                        return parseLocation(delivery.getDeliveryLocationId(), delivery.getRecipientAddress());
+                }
+
+                // Try to parse as GPS coordinates
+                LocationDTO loc = parseLocation(nodeId, null);
+                if (loc != null) {
+                        return loc;
+                }
+
+                // Try to fetch from Node repository
+                try {
+                        var node = nodeRepository.findById(nodeId).block();
+                        if (node != null && node.getLatitude() != null && node.getLongitude() != null) {
+                                return LocationDTO.builder()
+                                                .latitude(node.getLatitude())
+                                                .longitude(node.getLongitude())
+                                                .address(node.getName())
+                                                .build();
+                        }
+                } catch (Exception e) {
+                        log.debug("Could not fetch node {} from repository: {}", nodeId, e.getMessage());
+                }
+
+                return null;
         }
 
         /**

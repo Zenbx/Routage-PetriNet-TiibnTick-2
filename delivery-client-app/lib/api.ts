@@ -46,29 +46,31 @@ export interface DeliveryResponse {
   distance?: number;
 }
 
+// Tracking response from backend
 export interface TrackingResponse {
   trackingCode: string;
   status: string;
-  currentLocation?: Location;
-  estimatedArrival?: string;
-  history: Array<{
-    status: string;
-    timestamp: string;
-    location?: string;
-    description: string;
-  }>;
-  sender: {
-    name: string;
-    city: string;
-  };
-  recipient: {
-    name: string;
-    city: string;
-  };
-  packageInfo: {
-    description: string;
-    weight: number;
-  };
+  createdAt: string;
+  acceptedAt?: string;
+  pickedUpAt?: string;
+  deliveredAt?: string;
+  senderName: string;
+  recipientName: string;
+  recipientAddress: string;
+  recipientLandmark?: string;
+  estimatedDeliveryTime?: string;
+  progressPercentage?: number;
+  pickupLocation?: { latitude: number; longitude: number; address?: string };
+  deliveryLocation?: { latitude: number; longitude: number; address?: string };
+  driverLocation?: { latitude: number; longitude: number; address?: string };
+  packageDescription: string;
+  weight: number;
+  // Route and ETA data
+  routePath?: Array<[number, number]>; // [[lat, lng], ...]
+  totalDistance?: number; // km
+  remainingDistance?: number; // km
+  estimatedArrival?: string; // ISO 8601 timestamp
+  price?: number;
 }
 
 export interface RouteRequest {

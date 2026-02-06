@@ -217,6 +217,20 @@ class DeliveryAPI {
     });
   }
 
+  async depositAtHub(
+    deliveryId: string,
+    hubId: string,
+    currentLocation?: { latitude: number; longitude: number }
+  ): Promise<any> {
+    return this.request<any>(`/v1/delivery/${deliveryId}/deposit-at-hub`, {
+      method: "POST",
+      body: JSON.stringify({
+        hubId,
+        currentLocation
+      }),
+    });
+  }
+
   async getAllDeliveries(filters?: {
     status?: string;
     driverId?: string;

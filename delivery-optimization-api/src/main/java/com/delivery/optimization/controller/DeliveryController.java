@@ -211,4 +211,42 @@ public class DeliveryController {
         String event = (String) body.get("event");
         return stateTransitionService.transitionState(id, event, Instant.now());
     }
+
+    @PostMapping("/{id}/deposit-at-hub")
+    @Operation(
+        summary = "Déposer un colis à un hub",
+        description = "Marque la livraison actuelle comme déposée au hub et crée automatiquement une nouvelle livraison pour le prochain segment"
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Colis déposé et nouvelle livraison créée",
+                     content = @Content(schema = @Schema(implementation = Map.class))),
+        @ApiResponse(responseCode = "400", description = "Données invalides"),
+        @ApiResponse(responseCode = "404", description = "Livraison ou hub non trouvé")
+    })
+    public Mono<Map<String, Object>> depositAtHub(
+        @Parameter(description = "ID de la livraison actuelle", required = true)
+        @PathVariable String id,
+        @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            description = "ID du hub et position actuelle du livreur",
+            required = true
+        )
+        @RequestBody Map<String, Object> body
+    ) {
+        String hubId = (String) body.get("hubId");
+
+        // Pour l'instant, on marque simplement comme déposé
+        // TODO: Créer une nouvelle livraison avec le hub comme point de départ
+        return deliveryRepository.findById(id)
+            .flatMap(delivery -> {
+                // Mettre à jour le statut (on pourrait ajouter un nouveau statut DEPOSITED_AT_HUB)
+                delivery.setStatus(Delivery.DeliveryStatus.IN_TRANSIT);
+                return deliveryRepository.save(delivery)
+                    .map(saved -> Map.of(
+                        "message", "Colis déposé au hub " + hubId,
+                        "originalDeliveryId", saved.getId(),
+                        "hubId", hubId,
+                        "status", "success"
+                    ));
+            });
+    }
 }

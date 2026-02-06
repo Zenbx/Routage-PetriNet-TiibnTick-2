@@ -422,11 +422,22 @@ public class HubDepositService {
                 return deliveryRepository.findById(deliveryId)
                                 .switchIfEmpty(Mono.error(new RuntimeException("Delivery not found: " + deliveryId)))
                                 .flatMap(originalDelivery -> {
-                                        // Vérifier que la livraison est en transit
+                                        // Si déjà déposé au hub, retourner un message de succès
+                                        if (originalDelivery.getStatus() == Delivery.DeliveryStatus.AT_HUB) {
+                                                log.info("Delivery {} is already at hub. Returning success.", deliveryId);
+                                                return Mono.just(Map.<String, Object>of(
+                                                        "status", "already_deposited",
+                                                        "message", "Ce colis a déjà été déposé au hub",
+                                                        "deliveryId", originalDelivery.getId(),
+                                                        "currentStatus", originalDelivery.getStatus().name()
+                                                ));
+                                        }
+
+                                        // Vérifier que la livraison est en transit ou récupérée
                                         if (originalDelivery.getStatus() != Delivery.DeliveryStatus.IN_TRANSIT &&
                                                         originalDelivery.getStatus() != Delivery.DeliveryStatus.PICKED_UP) {
                                                 return Mono.error(new RuntimeException(
-                                                                "Cannot deposit: delivery status is " + originalDelivery.getStatus()));
+                                                                "Cannot deposit: delivery must be IN_TRANSIT or PICKED_UP. Current status: " + originalDelivery.getStatus()));
                                         }
 
                                         // Marquer comme déposé au hub

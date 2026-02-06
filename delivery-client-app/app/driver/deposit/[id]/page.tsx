@@ -152,7 +152,17 @@ export default function HubDepositPage() {
       }
 
       // Call backend to deposit at hub
-      await api.depositAtHub(deliveryId, selectedHub.id, driverLocation || undefined);
+      const result = await api.depositAtHub(deliveryId, selectedHub.id, driverLocation || undefined);
+
+      // Check if already deposited
+      if (result.status === "already_deposited") {
+        toast.info("Ce colis a déjà été déposé au hub");
+        // Redirect back to dashboard
+        setTimeout(() => {
+          router.push("/driver/dashboard");
+        }, 1500);
+        return;
+      }
 
       toast.success(`Colis déposé au hub ${selectedHub.name}!`);
 

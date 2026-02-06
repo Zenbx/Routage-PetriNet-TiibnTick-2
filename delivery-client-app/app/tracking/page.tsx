@@ -5,6 +5,7 @@ import { Search, QrCode, Package, MapPin, Clock, User, ArrowLeft, Truck } from "
 import { useToast } from "@/components/ui/Toast";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api, formatPrice, formatDistance, type TrackingResponse } from "@/lib/api";
+import { getRealRoute } from "@/lib/routing";
 import Link from "next/link";
 import loadDynamic from "next/dynamic";
 
@@ -111,6 +112,33 @@ function TrackingContent() {
 
     try {
       const data = await api.trackDelivery(trackingCode.trim());
+
+      // Calculate real road route using OSRM if locations are available
+      if (data.pickupLocation && data.deliveryLocation) {
+        try {
+          const osrmRoute = await getRealRoute(
+            [data.pickupLocation.latitude, data.pickupLocation.longitude],
+            [data.deliveryLocation.latitude, data.deliveryLocation.longitude]
+          );
+
+          if (osrmRoute && osrmRoute.coordinates.length > 0) {
+            // Update tracking info with real route
+            data.routePath = osrmRoute.coordinates;
+            console.log("OSRM route calculated with", osrmRoute.coordinates.length, "waypoints");
+          } else {
+            // Fallback: straight line if OSRM fails
+            console.warn("OSRM routing failed, using straight line");
+            data.routePath = [
+              [data.pickupLocation.latitude, data.pickupLocation.longitude],
+              [data.deliveryLocation.latitude, data.deliveryLocation.longitude]
+            ];
+          }
+        } catch (routeError) {
+          console.error("Error calculating OSRM route:", routeError);
+          // Continue with backend route if available
+        }
+      }
+
       setTrackingInfo(data);
 
       if (data.status === "PENDING" || data.status === "ACCEPTED") {

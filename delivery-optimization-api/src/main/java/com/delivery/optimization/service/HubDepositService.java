@@ -459,17 +459,26 @@ public class HubDepositService {
 
                                                                                 // Point de départ = le hub
                                                                                 .pickupLocationId(hubId)
+                                                                                .pickupNodeId(hubId)
                                                                                 .pickupType(Delivery.PickupType.RELAY_POINT)
                                                                                 .senderName("Hub Relais " + hubId)
                                                                                 .senderPhone(saved.getSenderPhone())
                                                                                 .senderAddress("Point Relais " + hubId)
+                                                                                .senderCity(saved.getSenderCity())
+                                                                                .senderRegion(saved.getSenderRegion())
+                                                                                .senderCountry(saved.getSenderCountry())
+                                                                                .senderLandmark("Hub " + hubId)
 
                                                                                 // Même destination finale
                                                                                 .deliveryLocationId(saved.getDeliveryLocationId())
+                                                                                .dropoffNodeId(saved.getDropoffNodeId())
                                                                                 .deliveryType(saved.getDeliveryType())
                                                                                 .recipientName(saved.getRecipientName())
                                                                                 .recipientPhone(saved.getRecipientPhone())
                                                                                 .recipientAddress(saved.getRecipientAddress())
+                                                                                .recipientCity(saved.getRecipientCity())
+                                                                                .recipientRegion(saved.getRecipientRegion())
+                                                                                .recipientCountry(saved.getRecipientCountry())
                                                                                 .recipientLandmark(saved.getRecipientLandmark())
 
                                                                                 // Même informations de colis
@@ -479,6 +488,10 @@ public class HubDepositService {
                                                                                 .packageWidth(saved.getPackageWidth())
                                                                                 .packageHeight(saved.getPackageHeight())
                                                                                 .price(saved.getPrice())
+
+                                                                                // Autres informations
+                                                                                .deadline(saved.getDeadline())
+                                                                                .distance(saved.getDistance())
 
                                                                                 // Nouveau segment disponible pour autres livreurs
                                                                                 .status(Delivery.DeliveryStatus.PENDING)

@@ -286,6 +286,18 @@ public class DeliveryController {
         @RequestBody Map<String, Object> body
     ) {
         String hubId = (String) body.get("hubId");
-        return hubDepositService.depositForRelayDelivery(id, hubId);
+        System.out.println("=== DEPOSIT AT HUB REQUEST ===");
+        System.out.println("Delivery ID: " + id);
+        System.out.println("Hub ID: " + hubId);
+        System.out.println("Body: " + body);
+
+        return hubDepositService.depositForRelayDelivery(id, hubId)
+            .doOnSuccess(result -> System.out.println("=== DEPOSIT SUCCESS: " + result))
+            .doOnError(error -> {
+                System.err.println("=== DEPOSIT ERROR ===");
+                System.err.println("Error type: " + error.getClass().getName());
+                System.err.println("Error message: " + error.getMessage());
+                error.printStackTrace();
+            });
     }
 }

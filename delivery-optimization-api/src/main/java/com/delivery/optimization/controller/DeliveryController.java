@@ -7,6 +7,7 @@ import com.delivery.optimization.dto.RerouteResponse;
 import com.delivery.optimization.service.ETAService;
 import com.delivery.optimization.service.ReroutingService;
 import com.delivery.optimization.service.StateTransitionService;
+import com.delivery.optimization.service.HubDepositService;
 import com.delivery.optimization.repository.DeliveryRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -32,6 +33,7 @@ public class DeliveryController {
     private final ReroutingService reroutingService;
     private final StateTransitionService stateTransitionService;
     private final DeliveryRepository deliveryRepository;
+    private final HubDepositService hubDepositService;
 
     @GetMapping
     @Operation(
@@ -233,20 +235,6 @@ public class DeliveryController {
         @RequestBody Map<String, Object> body
     ) {
         String hubId = (String) body.get("hubId");
-
-        // Pour l'instant, on marque simplement comme déposé
-        // TODO: Créer une nouvelle livraison avec le hub comme point de départ
-        return deliveryRepository.findById(id)
-            .flatMap(delivery -> {
-                // Mettre à jour le statut (on pourrait ajouter un nouveau statut DEPOSITED_AT_HUB)
-                delivery.setStatus(Delivery.DeliveryStatus.IN_TRANSIT);
-                return deliveryRepository.save(delivery)
-                    .map(saved -> Map.of(
-                        "message", "Colis déposé au hub " + hubId,
-                        "originalDeliveryId", saved.getId(),
-                        "hubId", hubId,
-                        "status", "success"
-                    ));
-            });
+        return hubDepositService.depositForRelayDelivery(id, hubId);
     }
 }

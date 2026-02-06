@@ -413,6 +413,108 @@ public class HubDepositService {
         }
 
         /**
+         * Déposer un colis au hub pour système de livraison en relais
+         * Crée automatiquement une nouvelle livraison pour le prochain segment
+         */
+        public Mono<Map<String, Object>> depositForRelayDelivery(String deliveryId, String hubId) {
+                log.info("Processing relay deposit for delivery {} at hub {}", deliveryId, hubId);
+
+                return deliveryRepository.findById(deliveryId)
+                                .switchIfEmpty(Mono.error(new RuntimeException("Delivery not found: " + deliveryId)))
+                                .flatMap(originalDelivery -> {
+                                        // Vérifier que la livraison est en transit
+                                        if (originalDelivery.getStatus() != Delivery.DeliveryStatus.IN_TRANSIT &&
+                                                        originalDelivery.getStatus() != Delivery.DeliveryStatus.PICKED_UP) {
+                                                return Mono.error(new RuntimeException(
+                                                                "Cannot deposit: delivery status is " + originalDelivery.getStatus()));
+                                        }
+
+                                        // Marquer comme déposé au hub
+                                        originalDelivery.setStatus(Delivery.DeliveryStatus.AT_HUB);
+                                        originalDelivery.setNewEntity(false);
+
+                                        // Créer l'enregistrement de dépôt
+                                        HubDeposit deposit = HubDeposit.builder()
+                                                        .id(UUID.randomUUID().toString())
+                                                        .newEntity(true)
+                                                        .deliveryId(originalDelivery.getId())
+                                                        .hubNodeId(hubId)
+                                                        .depositedByDriverId(originalDelivery.getDriverId())
+                                                        .depositTime(Instant.now())
+                                                        .status(HubDeposit.DepositStatus.DEPOSITED)
+                                                        .notes("Livraison en relais - segment suivant à créer")
+                                                        .build();
+
+                                        return deliveryRepository.save(originalDelivery)
+                                                        .zipWith(hubDepositRepository.save(deposit))
+                                                        .flatMap(tuple -> {
+                                                                Delivery saved = tuple.getT1();
+                                                                HubDeposit savedDeposit = tuple.getT2();
+
+                                                                // Créer une nouvelle livraison pour le prochain segment
+                                                                Delivery newDelivery = Delivery.builder()
+                                                                                .id("DEL-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
+                                                                                .newEntity(true)
+                                                                                .trackingCode(saved.getTrackingCode()) // Même code de suivi
+
+                                                                                // Point de départ = le hub
+                                                                                .pickupLocationId(hubId)
+                                                                                .pickupType(Delivery.PickupType.RELAY_POINT)
+                                                                                .senderName("Hub Relais " + hubId)
+                                                                                .senderPhone(saved.getSenderPhone())
+                                                                                .senderAddress("Point Relais " + hubId)
+
+                                                                                // Même destination finale
+                                                                                .deliveryLocationId(saved.getDeliveryLocationId())
+                                                                                .deliveryType(saved.getDeliveryType())
+                                                                                .recipientName(saved.getRecipientName())
+                                                                                .recipientPhone(saved.getRecipientPhone())
+                                                                                .recipientAddress(saved.getRecipientAddress())
+                                                                                .recipientLandmark(saved.getRecipientLandmark())
+
+                                                                                // Même informations de colis
+                                                                                .packageDescription(saved.getPackageDescription())
+                                                                                .weight(saved.getWeight())
+                                                                                .packageLength(saved.getPackageLength())
+                                                                                .packageWidth(saved.getPackageWidth())
+                                                                                .packageHeight(saved.getPackageHeight())
+                                                                                .price(saved.getPrice())
+
+                                                                                // Nouveau segment disponible pour autres livreurs
+                                                                                .status(Delivery.DeliveryStatus.PENDING)
+                                                                                .createdAt(Instant.now())
+                                                                                .build();
+
+                                                                return deliveryRepository.save(newDelivery)
+                                                                                .flatMap(createdDelivery -> {
+                                                                                        // Notifier via WebSocket
+                                                                                        webSocketBroadcaster.sendToTopic(
+                                                                                                        "/topic/tracking/" + saved.getTrackingCode(),
+                                                                                                        Map.of(
+                                                                                                                        "deliveryId", saved.getId(),
+                                                                                                                        "status", "AT_HUB",
+                                                                                                                        "hubId", hubId,
+                                                                                                                        "message", "Colis déposé au hub pour relais",
+                                                                                                                        "newDeliveryId", createdDelivery.getId()));
+
+                                                                                        return Mono.just(Map.<String, Object>of(
+                                                                                                        "status", "success",
+                                                                                                        "message", "Colis déposé au hub " + hubId,
+                                                                                                        "originalDeliveryId", saved.getId(),
+                                                                                                        "originalDeliveryStatus", saved.getStatus().name(),
+                                                                                                        "newDeliveryId", createdDelivery.getId(),
+                                                                                                        "newDeliveryStatus", createdDelivery.getStatus().name(),
+                                                                                                        "hubId", hubId,
+                                                                                                        "depositId", savedDeposit.getId(),
+                                                                                                        "depositedAt", savedDeposit.getDepositTime().toString()));
+                                                                                });
+                                                        });
+                                })
+                                .doOnSuccess(result -> log.info("Relay delivery created successfully"))
+                                .doOnError(error -> log.error("Error in relay deposit: {}", error.getMessage()));
+        }
+
+        /**
          * Calculer la distance entre deux points GPS (formule Haversine)
          */
         private double calculateDistance(Double lat1, Double lon1, Double lat2, Double lon2) {

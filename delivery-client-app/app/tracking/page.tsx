@@ -12,7 +12,10 @@ import dynamicImport from "next/dynamic";
 // Dynamically import map component (client-side only)
 const DeliveryMap = dynamicImport(
   () => import("@/components/map/DeliveryMap").then((mod) => mod.DeliveryMap),
-  { ssr: false }
+  {
+    ssr: false,
+    loading: () => <div className="w-full h-[400px] bg-background-light rounded-xl animate-pulse flex items-center justify-center text-text-muted">Chargement de la carte...</div>
+  }
 );
 
 export const dynamic = 'force-dynamic';
@@ -395,14 +398,16 @@ function TrackingContent() {
                   <MapPin className="w-5 h-5 text-primary" />
                   Carte de suivi
                 </h3>
-                <DeliveryMap
-                  pickupLocation={trackingInfo.pickupLocation}
-                  deliveryLocation={trackingInfo.deliveryLocation}
-                  driverLocation={trackingInfo.driverLocation}
-                  hubs={trackingInfo.hubs}
-                  routePoints={trackingInfo.routePath || []}
-                  className="h-[400px]"
-                />
+                <div className="h-[400px] w-full rounded-xl overflow-hidden">
+                  <DeliveryMap
+                    pickupLocation={trackingInfo.pickupLocation}
+                    deliveryLocation={trackingInfo.deliveryLocation}
+                    driverLocation={trackingInfo.driverLocation}
+                    hubs={trackingInfo.hubs}
+                    routePoints={trackingInfo.routePath || []}
+                    className="w-full h-full"
+                  />
+                </div>
                 <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 bg-blue-500 rounded-full"></div>

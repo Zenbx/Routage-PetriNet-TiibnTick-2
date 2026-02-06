@@ -249,9 +249,10 @@ export function DeliveryMap({
         [deliveryLocation.latitude, deliveryLocation.longitude]
       ], {
         color: "#f97316",
-        weight: 4,
-        opacity: 0.5,
-        dashArray: "10, 10",
+        weight: 6,
+        opacity: 0.9,
+        lineJoin: 'round',
+        lineCap: 'round',
       }).addTo(map);
     }
 

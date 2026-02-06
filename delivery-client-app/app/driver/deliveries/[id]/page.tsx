@@ -21,6 +21,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { driverAuth } from "@/lib/driverAuth";
+import { getRealRoute } from "@/lib/routing";
 import dynamic from "next/dynamic";
 
 // Dynamically import map component (client-side only)
@@ -141,43 +142,38 @@ export default function DeliveryDetailsPage() {
         setDelivery(mappedDelivery);
         setCurrentStatus(mappedDelivery.status);
 
-        // Calculate route immediately after fetching details if locations are available
-        if (data.pickupLocationId && data.deliveryLocationId) {
-          const currentDriverId = driverAuth.getDriver()?.id || "driver_1";
-          const result = await api.findShortestPath(data.pickupLocationId, data.deliveryLocationId, currentDriverId);
+        // Calculate route using OSRM for real road routing
+        if (data.pickupLocation && data.deliveryLocation) {
+          try {
+            // Use OSRM to get real road route
+            const osrmRoute = await getRealRoute(
+              [data.pickupLocation.latitude, data.pickupLocation.longitude],
+              [data.deliveryLocation.latitude, data.deliveryLocation.longitude]
+            );
 
-          console.log("Route result:", result);
-
-          if (result) {
-            // Utiliser geometryPath (coordonnées GPS réelles) si disponible, sinon path
-            let routePoints: Array<[number, number]> = [];
-
-            if (result.geometryPath && Array.isArray(result.geometryPath) && result.geometryPath.length > 0) {
-              // geometryPath est déjà au format [[lat, lng], ...]
-              routePoints = result.geometryPath.map((coord: any) =>
-                [coord[0], coord[1]] as [number, number]
-              );
-              console.log("Using geometryPath with", routePoints.length, "real GPS points");
-            } else if (result.path && Array.isArray(result.path)) {
-              console.warn("geometryPath not available, using fallback with path IDs");
-              // Fallback: si geometryPath n'existe pas, on utilise juste les points de départ/arrivée
-              if (data.pickupLocation && data.deliveryLocation) {
-                routePoints = [
-                  [data.pickupLocation.latitude, data.pickupLocation.longitude],
-                  [data.deliveryLocation.latitude, data.deliveryLocation.longitude]
-                ];
-              }
+            if (osrmRoute && osrmRoute.coordinates.length > 0) {
+              console.log("Using OSRM real road route with", osrmRoute.coordinates.length, "waypoints");
+              setRouteGeometry(osrmRoute.coordinates);
+              setDelivery(prev => prev ? {
+                ...prev,
+                distance: osrmRoute.distance,
+                estimatedDuration: `${Math.round(osrmRoute.duration)} min`
+              } : null);
+            } else {
+              // Fallback: straight line if OSRM fails
+              console.warn("OSRM routing failed, using straight line");
+              setRouteGeometry([
+                [data.pickupLocation.latitude, data.pickupLocation.longitude],
+                [data.deliveryLocation.latitude, data.deliveryLocation.longitude]
+              ]);
             }
-
-            if (routePoints.length > 0) {
-              setRouteGeometry(routePoints);
-            }
-
-            setDelivery(prev => prev ? {
-              ...prev,
-              distance: result.distance || 0,
-              estimatedDuration: `${Math.round(result.estimatedTime || result.duration / 60)} min`
-            } : null);
+          } catch (error) {
+            console.error("Error calculating route:", error);
+            // Fallback: straight line
+            setRouteGeometry([
+              [data.pickupLocation.latitude, data.pickupLocation.longitude],
+              [data.deliveryLocation.latitude, data.deliveryLocation.longitude]
+            ]);
           }
         }
       } catch (error) {

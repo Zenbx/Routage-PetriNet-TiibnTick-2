@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Plane, Globe, Map, MapPin, Map as MapIcon, X } from "lucide-react";
 import { getCountries, getRegionsByCountry, getCitiesByRegion } from "@/lib/locations";
 import { api } from "@/lib/api";
+import { AddressAutocomplete } from "@/components/ui/AddressAutocomplete";
 import dynamic from "next/dynamic";
 
 const LocationPickerMap = dynamic(
@@ -198,21 +199,31 @@ export function SenderStep({ onNext }: SenderStepProps) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">Adresse / Rue</label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    placeholder="Utilisez le bouton 'Choisir sur la carte' pour plus de précision"
-                    className="input-field pr-12"
-                  />
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 bg-primary/10 p-1.5 rounded-lg">
-                    <MapIcon className={`w-4 h-4 ${formData.latitude ? 'text-primary' : 'text-text-muted animate-pulse'}`} />
-                  </div>
-                </div>
+                <label className="block text-sm font-medium mb-2">
+                  Adresse / Rue <span className="text-primary">*</span>
+                </label>
+                <AddressAutocomplete
+                  value={formData.address}
+                  onChange={(value) => setFormData({ ...formData, address: value })}
+                  onSelect={(data) => {
+                    setFormData({
+                      ...formData,
+                      address: data.address,
+                      latitude: data.latitude,
+                      longitude: data.longitude,
+                      city: data.city || formData.city,
+                      region: data.region || formData.region,
+                    });
+                  }}
+                  placeholder="Commencez à taper une adresse..."
+                  countryCode="cm"
+                />
                 <p className="text-[10px] text-text-muted mt-2">
-                  {formData.latitude ? `Coordonnées GPS capturées : ${formData.latitude.toFixed(4)}, ${formData.longitude.toFixed(4)}` : "⚠️ Coordonnées GPS non capturées. Merci d'utiliser la carte."}
+                  {formData.latitude ? (
+                    <span className="text-green-500">✓ Coordonnées GPS: {formData.latitude.toFixed(4)}, {formData.longitude.toFixed(4)}</span>
+                  ) : (
+                    <span className="text-orange-500">⚠️ Tapez une adresse et sélectionnez-la dans les suggestions</span>
+                  )}
                 </p>
               </div>
             </div>

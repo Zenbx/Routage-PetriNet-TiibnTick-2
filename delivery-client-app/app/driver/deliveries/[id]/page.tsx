@@ -146,15 +146,36 @@ export default function DeliveryDetailsPage() {
           const currentDriverId = driverAuth.getDriver()?.id || "driver_1";
           const result = await api.findShortestPath(data.pickupLocationId, data.deliveryLocationId, currentDriverId);
 
-          if (result && result.path) {
-            const points: Array<[number, number]> = result.path.map((node: any) =>
-              [node.latitude, node.longitude] as [number, number]
-            );
-            setRouteGeometry(points);
+          console.log("Route result:", result);
+
+          if (result) {
+            // Utiliser geometryPath (coordonnées GPS réelles) si disponible, sinon path
+            let routePoints: Array<[number, number]> = [];
+
+            if (result.geometryPath && Array.isArray(result.geometryPath) && result.geometryPath.length > 0) {
+              // geometryPath est déjà au format [[lat, lng], ...]
+              routePoints = result.geometryPath.map((coord: any) =>
+                [coord[0], coord[1]] as [number, number]
+              );
+              console.log("Using geometryPath with", routePoints.length, "real GPS points");
+            } else if (result.path && Array.isArray(result.path)) {
+              console.warn("geometryPath not available, using fallback with path IDs");
+              // Fallback: si geometryPath n'existe pas, on utilise juste les points de départ/arrivée
+              if (data.pickupLocation && data.deliveryLocation) {
+                routePoints = [
+                  [data.pickupLocation.latitude, data.pickupLocation.longitude],
+                  [data.deliveryLocation.latitude, data.deliveryLocation.longitude]
+                ];
+              }
+            }
+
+            if (routePoints.length > 0) {
+              setRouteGeometry(routePoints);
+            }
 
             setDelivery(prev => prev ? {
               ...prev,
-              distance: result.distance,
+              distance: result.distance || 0,
               estimatedDuration: `${Math.round(result.estimatedTime || result.duration / 60)} min`
             } : null);
           }
@@ -456,24 +477,40 @@ export default function DeliveryDetailsPage() {
           <h2 className="font-bold text-lg mb-4">Itinéraire</h2>
           <div className="space-y-4">
             <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center flex-shrink-0">
-                <MapPin className="w-4 h-4 text-green-500" />
+              <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+                <MapPin className="w-4 h-4 text-blue-500" />
               </div>
               <div className="flex-1">
-                <p className="font-medium">Point de départ</p>
-                <p className="text-sm text-text-muted">{delivery.senderCity}, {delivery.senderRegion}</p>
+                <p className="font-medium text-white">Point de départ</p>
+                <p className="text-sm text-text">{delivery.senderAddress}</p>
+                {delivery.senderLandmark && (
+                  <p className="text-xs text-blue-400 mt-1">📍 Lieu-dit: {delivery.senderLandmark}</p>
+                )}
+                {delivery.pickupLocation && (
+                  <p className="text-xs text-text-muted mt-1 font-mono">
+                    GPS: {delivery.pickupLocation.latitude.toFixed(6)}, {delivery.pickupLocation.longitude.toFixed(6)}
+                  </p>
+                )}
               </div>
             </div>
 
             <div className="ml-4 border-l-2 border-dashed border-border h-8"></div>
 
             <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <MapPin className="w-4 h-4 text-primary" />
+              <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center flex-shrink-0">
+                <MapPin className="w-4 h-4 text-green-500" />
               </div>
               <div className="flex-1">
-                <p className="font-medium">Destination</p>
-                <p className="text-sm text-text-muted">{delivery.recipientCity}, {delivery.recipientRegion}</p>
+                <p className="font-medium text-white">Destination</p>
+                <p className="text-sm text-text">{delivery.recipientAddress}</p>
+                {delivery.recipientLandmark && (
+                  <p className="text-xs text-green-400 mt-1">📍 Lieu-dit: {delivery.recipientLandmark}</p>
+                )}
+                {delivery.deliveryLocation && (
+                  <p className="text-xs text-text-muted mt-1 font-mono">
+                    GPS: {delivery.deliveryLocation.latitude.toFixed(6)}, {delivery.deliveryLocation.longitude.toFixed(6)}
+                  </p>
+                )}
               </div>
             </div>
           </div>

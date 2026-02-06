@@ -33,6 +33,7 @@ F:\Projet Réseau\delivery-optimization-api\src\main\java\com\delivery\optimizat
 F:\Projet Réseau\delivery-optimization-api\src\main\java\com\delivery\optimization\dto\HubPickupRequest.java
 F:\Projet Réseau\delivery-optimization-api\src\main\java\com\delivery\optimization\service\PetriNetClient.java
 F:\Projet Réseau\delivery-optimization-api\src\main\java\com\delivery\optimization\DeliveryOptimizationApplication.java
+F:\Projet Réseau\delivery-optimization-api\src\main\java\com\delivery\optimization\dto\HubEventDTO.java
 F:\Projet Réseau\delivery-optimization-api\src\main\java\com\delivery\optimization\dto\HubParcelInfoDTO.java
 F:\Projet Réseau\delivery-optimization-api\src\main\java\com\delivery\optimization\dto\TrackingInfoDTO.java
 F:\Projet Réseau\delivery-optimization-api\src\main\java\com\delivery\optimization\service\ReroutingService.java

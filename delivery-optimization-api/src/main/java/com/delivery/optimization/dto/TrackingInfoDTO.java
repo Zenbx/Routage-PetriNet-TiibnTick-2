@@ -69,4 +69,7 @@ public class TrackingInfoDTO {
     private String estimatedArrival; // ISO 8601 timestamp for ETA
     private Double price; // Delivery price
     private List<LocationDTO> hubs; // Hubs (relay points) on the map
+
+    // Hub deposit/pickup events history
+    private List<HubEventDTO> hubEvents; // Historique des dépôts et retraits aux hubs
 }

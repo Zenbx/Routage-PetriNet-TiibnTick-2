@@ -83,6 +83,19 @@ export interface TrackingResponse {
   remainingDistance?: number; // km
   estimatedArrival?: string; // ISO 8601 timestamp
   price?: number;
+  // Hub deposit/pickup events
+  hubEvents?: HubEvent[];
+}
+
+export interface HubEvent {
+  eventType: "DEPOSIT" | "PICKUP";
+  timestamp: string;
+  hubId: string;
+  hubName: string;
+  hubAddress?: string;
+  driverName?: string;
+  deliveryId?: string;
+  notes?: string;
 }
 
 export interface RouteRequest {

@@ -20,6 +20,11 @@ public interface DeliveryRepository extends ReactiveCrudRepository<Delivery, Str
     Mono<Delivery> findByTrackingCode(String trackingCode);
 
     /**
+     * Trouve toutes les livraisons avec le même code de tracking (pour système de relais)
+     */
+    Flux<Delivery> findAllByTrackingCode(String trackingCode);
+
+    /**
      * Trouve toutes les livraisons avec le statut PENDING (pour le feed livreur)
      */
     Flux<Delivery> findByStatus(Delivery.DeliveryStatus status);

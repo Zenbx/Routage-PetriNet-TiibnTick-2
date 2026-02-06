@@ -47,6 +47,7 @@ public class ClientController {
         private final ETAService etaService;
         private final NodeRepository nodeRepository;
         private final com.delivery.optimization.repository.DriverRepository driverRepository;
+        private final com.delivery.optimization.repository.HubDepositRepository hubDepositRepository;
 
         /**
          * Créer une nouvelle demande de livraison
@@ -278,6 +279,34 @@ public class ClientController {
                                                 .build())
                                 .collectList();
 
+                // Récupérer l'historique des événements de hub pour ce tracking code
+                Mono<List<HubEventDTO>> hubEventsMono = deliveryRepository.findAllByTrackingCode(delivery.getTrackingCode())
+                                .flatMap(del -> hubDepositRepository.findByDeliveryId(del.getId())
+                                                .flatMap(deposit -> {
+                                                        // Récupérer les infos du hub
+                                                        return nodeRepository.findById(deposit.getHubNodeId())
+                                                                        .map(hub -> HubEventDTO.builder()
+                                                                                        .eventType("DEPOSIT")
+                                                                                        .timestamp(deposit.getDepositTime())
+                                                                                        .hubId(hub.getId())
+                                                                                        .hubName(hub.getName())
+                                                                                        .hubAddress(hub.getName())
+                                                                                        .deliveryId(del.getId())
+                                                                                        .notes(deposit.getNotes())
+                                                                                        .build())
+                                                                        .defaultIfEmpty(HubEventDTO.builder()
+                                                                                        .eventType("DEPOSIT")
+                                                                                        .timestamp(deposit.getDepositTime())
+                                                                                        .hubId(deposit.getHubNodeId())
+                                                                                        .hubName("Hub " + deposit.getHubNodeId())
+                                                                                        .deliveryId(del.getId())
+                                                                                        .build());
+                                                })
+                                                .defaultIfEmpty(HubEventDTO.builder().build()) // Empty if no deposit
+                                )
+                                .filter(event -> event.getTimestamp() != null) // Filter out empty events
+                                .collectList();
+
                 return Mono.zip(
                                 resolveLocation(pId, delivery.getSenderAddress())
                                                 .defaultIfEmpty(new LocationDTO()),
@@ -285,13 +314,15 @@ public class ClientController {
                                                 .defaultIfEmpty(new LocationDTO()),
                                 driverLocMono,
                                 hubsMono,
-                                driverMono.defaultIfEmpty(new Driver()))
+                                driverMono.defaultIfEmpty(new Driver()),
+                                hubEventsMono)
                                 .map(tuple -> {
                                         LocationDTO pickup = tuple.getT1();
                                         LocationDTO deliveryLoc = tuple.getT2();
                                         LocationDTO driverLocation = tuple.getT3();
                                         List<LocationDTO> hubs = tuple.getT4();
                                         Driver driverData = tuple.getT5();
+                                        List<HubEventDTO> hubEvents = tuple.getT6();
 
                                         if (pickup.getLatitude() != null)
                                                 builder.pickupLocation(pickup);
@@ -307,6 +338,7 @@ public class ClientController {
                                         }
 
                                         builder.hubs(hubs);
+                                        builder.hubEvents(hubEvents);
 
                                         return builder;
                                 })

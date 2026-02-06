@@ -482,6 +482,23 @@ function TrackingContent() {
                     isCompleted
                   />
                 )}
+                {/* Hub events (deposits and pickups) */}
+                {trackingInfo.hubEvents && trackingInfo.hubEvents
+                  .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+                  .map((event, index) => (
+                    <TimelineItem
+                      key={`hub-event-${index}`}
+                      title={
+                        event.eventType === "DEPOSIT"
+                          ? `Dépôt au hub ${event.hubName}`
+                          : `Retrait du hub ${event.hubName}`
+                      }
+                      subtitle={event.hubAddress}
+                      date={new Date(event.timestamp).toLocaleString("fr-FR")}
+                      isCompleted
+                      icon="hub"
+                    />
+                  ))}
                 {trackingInfo.deliveredAt && (
                   <TimelineItem
                     title="Livré"
@@ -534,22 +551,29 @@ export default function TrackingPage() {
 
 function TimelineItem({
   title,
+  subtitle,
   date,
   isCompleted,
   isLast = false,
+  icon,
 }: {
   title: string;
+  subtitle?: string;
   date: string;
   isCompleted: boolean;
   isLast?: boolean;
+  icon?: "hub" | "default";
 }) {
   return (
     <div className="flex gap-4">
       <div className="flex flex-col items-center">
         <div
-          className={`w-4 h-4 rounded-full border-2 ${isCompleted
-            ? "bg-primary border-primary"
-            : "bg-background border-border"
+          className={`w-4 h-4 rounded-full border-2 ${
+            icon === "hub"
+              ? "bg-amber-500 border-amber-500"
+              : isCompleted
+              ? "bg-primary border-primary"
+              : "bg-background border-border"
             }`}
         />
         {!isLast && (
@@ -563,7 +587,10 @@ function TimelineItem({
         <div className={`font-medium ${isCompleted ? "text-white" : "text-text-muted"}`}>
           {title}
         </div>
-        <div className="text-text-muted text-sm">{date}</div>
+        {subtitle && (
+          <div className="text-text-muted text-xs mt-0.5">{subtitle}</div>
+        )}
+        <div className="text-text-muted text-sm mt-1">{date}</div>
       </div>
     </div>
   );

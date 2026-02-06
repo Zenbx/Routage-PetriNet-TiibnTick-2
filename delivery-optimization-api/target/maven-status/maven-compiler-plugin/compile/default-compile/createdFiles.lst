@@ -22,6 +22,7 @@ com\delivery\optimization\exception\CustomExceptions.class
 com\delivery\optimization\controller\HubController.class
 com\delivery\optimization\dto\TrackingInfoDTO.class
 com\delivery\optimization\dto\HubDepositResponse.class
+com\delivery\optimization\dto\HubEventDTO.class
 com\delivery\optimization\dto\DriverRegisterRequest$DriverRegisterRequestBuilder.class
 com\delivery\optimization\dto\HubDepositResponse$HubDepositResponseBuilder.class
 com\delivery\optimization\dto\HubPickupResponse$HubPickupResponseBuilder.class
@@ -38,6 +39,7 @@ com\delivery\optimization\algorithm\AStar$NodeScore.class
 com\delivery\optimization\domain\Node$NodeBuilder.class
 com\delivery\optimization\algorithm\CostFunction.class
 com\delivery\optimization\dto\DriverLoginRequest$DriverLoginRequestBuilder.class
+com\delivery\optimization\dto\HubEventDTO$HubEventDTOBuilder.class
 com\delivery\optimization\domain\RerouteEvent.class
 com\delivery\optimization\config\OpenApiConfig.class
 com\delivery\optimization\controller\ClientController.class

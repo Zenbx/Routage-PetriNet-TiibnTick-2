@@ -511,15 +511,19 @@ public class HubDepositService {
 
                                                                 return deliveryRepository.save(newDelivery)
                                                                                 .flatMap(createdDelivery -> {
-                                                                                        // Notifier via WebSocket
-                                                                                        webSocketBroadcaster.sendToTopic(
-                                                                                                        "/topic/tracking/" + saved.getTrackingCode(),
-                                                                                                        Map.of(
-                                                                                                                        "deliveryId", saved.getId(),
-                                                                                                                        "status", "AT_HUB",
-                                                                                                                        "hubId", hubId,
-                                                                                                                        "message", "Colis déposé au hub pour relais",
-                                                                                                                        "newDeliveryId", createdDelivery.getId()));
+                                                                                        // Notifier via WebSocket (non-bloquant)
+                                                                                        try {
+                                                                                                webSocketBroadcaster.sendToTopic(
+                                                                                                                "/topic/tracking/" + saved.getTrackingCode(),
+                                                                                                                Map.of(
+                                                                                                                                "deliveryId", saved.getId(),
+                                                                                                                                "status", "AT_HUB",
+                                                                                                                                "hubId", hubId,
+                                                                                                                                "message", "Colis déposé au hub pour relais",
+                                                                                                                                "newDeliveryId", createdDelivery.getId()));
+                                                                                        } catch (Exception e) {
+                                                                                                log.warn("Failed to send WebSocket notification: {}", e.getMessage());
+                                                                                        }
 
                                                                                         return Mono.just(Map.<String, Object>of(
                                                                                                         "status", "success",
@@ -531,6 +535,18 @@ public class HubDepositService {
                                                                                                         "hubId", hubId,
                                                                                                         "depositId", savedDeposit.getId(),
                                                                                                         "depositedAt", savedDeposit.getDepositTime().toString()));
+                                                                                })
+                                                                                .onErrorResume(newDeliveryError -> {
+                                                                                        // Si la création de la nouvelle livraison échoue, le dépôt est quand même réussi
+                                                                                        log.error("Failed to create relay delivery, but deposit succeeded: {}", newDeliveryError.getMessage());
+                                                                                        return Mono.just(Map.<String, Object>of(
+                                                                                                        "status", "success",
+                                                                                                        "message", "Colis déposé au hub " + hubId + " (nouvelle livraison en attente)",
+                                                                                                        "originalDeliveryId", saved.getId(),
+                                                                                                        "originalDeliveryStatus", saved.getStatus().name(),
+                                                                                                        "hubId", hubId,
+                                                                                                        "depositId", savedDeposit.getId(),
+                                                                                                        "warning", "La création de la livraison relais a échoué, veuillez contacter l'admin"));
                                                                                 });
                                                         });
                                 })

@@ -130,7 +130,17 @@ export default function DriverDashboardPage() {
 
       toast.success("Livraison acceptée! Vous êtes maintenant occupé.");
     } catch (error: any) {
-      toast.error(error.message || "Erreur lors de l'acceptation");
+      // L'opération peut avoir réussi côté serveur malgré l'erreur
+      // On actualise la liste pour vérifier
+      toast.info("Traitement en cours, actualisation de la liste...");
+
+      // Retirer optimistiquement la livraison de la liste et actualiser
+      setAvailableDeliveries(prev => prev.filter(d => d.id !== deliveryId));
+
+      // Attendre un peu avant d'actualiser pour laisser le temps au serveur
+      setTimeout(() => {
+        fetchDeliveries();
+      }, 1000);
     } finally {
       setAcceptingDeliveryId(null);
     }

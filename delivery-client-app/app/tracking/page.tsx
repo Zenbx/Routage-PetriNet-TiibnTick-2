@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { Search, QrCode, Package, MapPin, Clock, User, ArrowLeft, Truck } from "lucide-react";
+import { Search, QrCode, Package, MapPin, Clock, User, ArrowLeft, Truck, X } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api, formatPrice, formatDistance, type TrackingResponse } from "@/lib/api";
@@ -28,6 +28,7 @@ function TrackingContent() {
   const [loading, setLoading] = useState(false);
   const [trackingInfo, setTrackingInfo] = useState<TrackingResponse | null>(null);
   const [error, setError] = useState("");
+  const [isMapFullscreen, setIsMapFullscreen] = useState(false);
   const router = useRouter();
   const toast = useToast();
 
@@ -393,12 +394,32 @@ function TrackingContent() {
 
             {/* Map */}
             {(trackingInfo.pickupLocation || trackingInfo.deliveryLocation) && (
-              <div className="card">
-                <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
-                  <MapPin className="w-5 h-5 text-primary" />
-                  Carte de suivi
-                </h3>
-                <div className="h-[400px] w-full rounded-xl overflow-hidden">
+              <div className={`card ${isMapFullscreen ? 'fixed inset-0 z-50 rounded-none p-0' : ''}`}>
+                <div className={`flex items-center justify-between ${isMapFullscreen ? 'p-6 bg-background-card' : 'mb-4'}`}>
+                  <h3 className="font-bold text-lg flex items-center gap-2">
+                    <MapPin className="w-5 h-5 text-primary" />
+                    Carte de suivi
+                  </h3>
+                  <button
+                    onClick={() => setIsMapFullscreen(!isMapFullscreen)}
+                    className="px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg transition-colors flex items-center gap-2 text-sm font-medium"
+                  >
+                    {isMapFullscreen ? (
+                      <>
+                        <X className="w-4 h-4" />
+                        Fermer
+                      </>
+                    ) : (
+                      <>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+                        </svg>
+                        Plein écran
+                      </>
+                    )}
+                  </button>
+                </div>
+                <div className={`w-full rounded-xl overflow-hidden ${isMapFullscreen ? 'h-[calc(100vh-120px)]' : 'h-[400px]'}`}>
                   <DeliveryMap
                     pickupLocation={trackingInfo.pickupLocation}
                     deliveryLocation={trackingInfo.deliveryLocation}
@@ -408,7 +429,7 @@ function TrackingContent() {
                     className="w-full h-full"
                   />
                 </div>
-                <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
+                <div className={`grid grid-cols-3 gap-2 text-xs ${isMapFullscreen ? 'p-6 pt-2 bg-background-card' : 'mt-4'}`}>
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
                     <span className="text-text-muted">Récupération</span>

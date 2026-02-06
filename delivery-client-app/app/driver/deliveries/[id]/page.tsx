@@ -89,6 +89,58 @@ export default function DeliveryDetailsPage() {
   const [isNavigating, setIsNavigating] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [driverSettings, setDriverSettings] = useState({ averageSpeed: 40, fuelConsumption: 8 });
+  const [driverLocation, setDriverLocation] = useState<Location | null>(null);
+  const [isTrackingLocation, setIsTrackingLocation] = useState(false);
+  const [locationPermission, setLocationPermission] = useState<"granted" | "denied" | "prompt" | "unsupported">("prompt");
+
+  // Real-time GPS tracking when IN_TRANSIT
+  useEffect(() => {
+    if (currentStatus !== "IN_TRANSIT" && currentStatus !== "PICKED_UP") {
+      setIsTrackingLocation(false);
+      return;
+    }
+
+    if (!navigator.geolocation) {
+      setLocationPermission("unsupported");
+      console.error("Geolocation is not supported by this browser");
+      return;
+    }
+
+    setIsTrackingLocation(true);
+    let watchId: number;
+
+    watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        setLocationPermission("granted");
+        const location = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude
+        };
+        setDriverLocation(location);
+
+        // Send location update to backend every position change
+        api.updateDeliveryStatus(deliveryId, currentStatus, location)
+          .catch(err => console.error("Failed to update driver location:", err));
+      },
+      (error) => {
+        console.error("Geolocation error:", error);
+        if (error.code === error.PERMISSION_DENIED) {
+          setLocationPermission("denied");
+        }
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 5000
+      }
+    );
+
+    return () => {
+      if (watchId) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+    };
+  }, [currentStatus, deliveryId]);
 
   // Fetch delivery details and hubs
   useEffect(() => {
@@ -195,10 +247,9 @@ export default function DeliveryDetailsPage() {
         await api.updateDeliveryStatus(deliveryId, newStatus);
         setCurrentStatus(newStatus);
 
-        // Si passage en IN_TRANSIT, on pourrait démarrer le GPS tracking ici
+        // Le GPS tracking démarre automatiquement via useEffect quand IN_TRANSIT
         if (newStatus === "IN_TRANSIT") {
-          // TODO: Démarrer le tracking GPS avec Kalman filter
-          console.log("GPS tracking started");
+          console.log("GPS tracking will start automatically");
         }
       } catch (error) {
         console.error("Erreur lors de la mise à jour du statut:", error);
@@ -313,6 +364,57 @@ export default function DeliveryDetailsPage() {
             />
           </div>
         </div>
+
+        {/* Location Permission Alert */}
+        {(currentStatus === "IN_TRANSIT" || currentStatus === "PICKED_UP") && (
+          <>
+            {locationPermission === "denied" && (
+              <div className="card bg-red-500/10 border-red-500/30">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-6 h-6 text-red-500 flex-shrink-0 mt-1" />
+                  <div className="flex-1">
+                    <h3 className="font-bold text-red-500 mb-2">Localisation refusée</h3>
+                    <p className="text-sm text-text-muted mb-3">
+                      Pour que le client puisse suivre votre position en temps réel, vous devez activer la localisation.
+                    </p>
+                    <p className="text-xs text-text-muted">
+                      Veuillez autoriser l'accès à la localisation dans les paramètres de votre navigateur, puis rechargez la page.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            {locationPermission === "granted" && isTrackingLocation && (
+              <div className="card bg-green-500/10 border-green-500/30">
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <Navigation className="w-6 h-6 text-green-500" />
+                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-green-500">Suivi GPS actif</h3>
+                    <p className="text-xs text-text-muted">
+                      Votre position est partagée en temps réel avec le client
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            {locationPermission === "unsupported" && (
+              <div className="card bg-orange-500/10 border-orange-500/30">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-6 h-6 text-orange-500 flex-shrink-0 mt-1" />
+                  <div>
+                    <h3 className="font-bold text-orange-500 mb-1">Géolocalisation non supportée</h3>
+                    <p className="text-sm text-text-muted">
+                      Votre navigateur ne supporte pas la géolocalisation. Veuillez utiliser un navigateur moderne.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
 
         {/* Map Section */}
         <div className={isFullScreen ? "fixed inset-0 z-[100] m-0 p-0 overflow-hidden bg-black" : "card overflow-hidden"} id="map-section">

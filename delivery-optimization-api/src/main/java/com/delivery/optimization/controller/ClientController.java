@@ -262,27 +262,20 @@ public class ClientController {
                                                 .build())
                                 .defaultIfEmpty(new LocationDTO());
 
-                // Résolution des Hubs (Points Relais)
-                List<String> hubIds = new ArrayList<>();
+                // Résolution des Hubs (Points Relais) - Afficher TOUS les hubs sur la carte
                 String pId = delivery.getPickupLocationId() != null ? delivery.getPickupLocationId()
                                 : delivery.getPickupNodeId();
                 String dId = delivery.getDeliveryLocationId() != null ? delivery.getDeliveryLocationId()
                                 : delivery.getDropoffNodeId();
 
-                if (pId != null && pId.startsWith("RELAY_")) {
-                        hubIds.add(pId);
-                }
-                if (dId != null && dId.startsWith("RELAY_")) {
-                        hubIds.add(dId);
-                }
-
-                Mono<List<LocationDTO>> hubsMono = Flux.fromIterable(hubIds)
-                                .flatMap(id -> nodeRepository.findById(id)
-                                                .map(node -> LocationDTO.builder()
-                                                                .latitude(node.getLatitude())
-                                                                .longitude(node.getLongitude())
-                                                                .address(node.getName())
-                                                                .build()))
+                // Récupérer tous les hubs (RELAY et DEPOT) pour affichage sur la carte
+                Mono<List<LocationDTO>> hubsMono = nodeRepository.findAll()
+                                .filter(node -> "RELAY".equals(node.getType()) || "DEPOT".equals(node.getType()))
+                                .map(node -> LocationDTO.builder()
+                                                .latitude(node.getLatitude())
+                                                .longitude(node.getLongitude())
+                                                .address(node.getName())
+                                                .build())
                                 .collectList();
 
                 return Mono.zip(
@@ -460,7 +453,36 @@ public class ClientController {
                                 .defaultIfEmpty(builder);
 
                 return Mono.zip(routeMono, etaMono)
-                                .map(tuple -> tuple.getT1().build());
+                                .flatMap(tuple -> {
+                                        TrackingInfoDTO.TrackingInfoDTOBuilder finalBuilder = tuple.getT2(); // Use etaMono result which has ETA data
+
+                                        // Si pas de remainingDistance calculée et que le livreur a une position
+                                        if (finalBuilder.build().getRemainingDistance() == null &&
+                                            delivery.getDriverId() != null &&
+                                            finalBuilder.build().getDriverLocation() != null &&
+                                            finalBuilder.build().getDeliveryLocation() != null) {
+
+                                            LocationDTO driverLoc = finalBuilder.build().getDriverLocation();
+                                            LocationDTO deliveryLoc = finalBuilder.build().getDeliveryLocation();
+
+                                            // Calculer la distance restante avec Haversine
+                                            double remainingKm = calculateHaversineDistance(
+                                                driverLoc.getLatitude(), driverLoc.getLongitude(),
+                                                deliveryLoc.getLatitude(), deliveryLoc.getLongitude()
+                                            );
+
+                                            finalBuilder.remainingDistance(remainingKm);
+
+                                            // Estimer l'heure d'arrivée (vitesse moyenne 40 km/h)
+                                            if (finalBuilder.build().getEstimatedArrival() == null) {
+                                                double hoursRemaining = remainingKm / 40.0;
+                                                Instant eta = Instant.now().plusSeconds((long) (hoursRemaining * 3600));
+                                                finalBuilder.estimatedArrival(eta.toString());
+                                            }
+                                        }
+
+                                        return Mono.just(finalBuilder.build());
+                                });
         }
 
         /**
@@ -499,5 +521,24 @@ public class ClientController {
                                 .doOnError(e -> log.warn("Failed to resolve node {} from repository: {}",
                                                 locationId, e.getMessage()))
                                 .onErrorResume(e -> Mono.empty());
+        }
+
+        /**
+         * Calcule la distance entre deux points GPS en utilisant la formule de Haversine
+         * @return Distance en kilomètres
+         */
+        private double calculateHaversineDistance(double lat1, double lon1, double lat2, double lon2) {
+                final int EARTH_RADIUS_KM = 6371;
+
+                double dLat = Math.toRadians(lat2 - lat1);
+                double dLon = Math.toRadians(lon2 - lon1);
+
+                double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                           Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
+                           Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+                double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+                return EARTH_RADIUS_KM * c;
         }
 }

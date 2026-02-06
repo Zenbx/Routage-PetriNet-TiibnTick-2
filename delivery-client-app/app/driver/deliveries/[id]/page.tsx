@@ -108,32 +108,53 @@ export default function DeliveryDetailsPage() {
 
     setIsTrackingLocation(true);
     let watchId: number;
+    let retryCount = 0;
+    const MAX_RETRIES = 3;
 
-    watchId = navigator.geolocation.watchPosition(
-      (position) => {
-        setLocationPermission("granted");
-        const location = {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude
-        };
-        setDriverLocation(location);
+    const startTracking = () => {
+      watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          setLocationPermission("granted");
+          retryCount = 0; // Reset retry count on success
+          const location = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude
+          };
+          setDriverLocation(location);
+          console.log("Driver location updated:", location);
 
-        // Send location update to backend every position change
-        api.updateDeliveryStatus(deliveryId, currentStatus, location)
-          .catch(err => console.error("Failed to update driver location:", err));
-      },
-      (error) => {
-        console.error("Geolocation error:", error);
-        if (error.code === error.PERMISSION_DENIED) {
-          setLocationPermission("denied");
+          // Send location update to backend every position change
+          api.updateDeliveryStatus(deliveryId, currentStatus, location)
+            .then(() => console.log("Location sent to backend successfully"))
+            .catch(err => console.error("Failed to update driver location:", err));
+        },
+        (error) => {
+          console.error("Geolocation error:", error);
+          if (error.code === error.PERMISSION_DENIED) {
+            setLocationPermission("denied");
+          } else if (error.code === error.TIMEOUT) {
+            // Retry on timeout
+            if (retryCount < MAX_RETRIES) {
+              retryCount++;
+              console.log(`GPS timeout, retrying... (${retryCount}/${MAX_RETRIES})`);
+              if (watchId) {
+                navigator.geolocation.clearWatch(watchId);
+              }
+              setTimeout(() => startTracking(), 2000); // Retry after 2 seconds
+            } else {
+              console.error("GPS timeout after max retries");
+            }
+          }
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 30000, // Increased to 30 seconds
+          maximumAge: 10000 // Accept cached positions up to 10 seconds old
         }
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 5000
-      }
-    );
+      );
+    };
+
+    startTracking();
 
     return () => {
       if (watchId) {
@@ -510,6 +531,7 @@ export default function DeliveryDetailsPage() {
             <DeliveryMap
               pickupLocation={delivery.pickupLocation}
               deliveryLocation={delivery.deliveryLocation}
+              driverLocation={driverLocation || undefined}
               hubs={hubs}
               routePoints={routeGeometry}
               className="w-full h-full"

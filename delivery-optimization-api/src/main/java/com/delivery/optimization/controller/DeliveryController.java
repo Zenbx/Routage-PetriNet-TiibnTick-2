@@ -9,6 +9,7 @@ import com.delivery.optimization.service.ReroutingService;
 import com.delivery.optimization.service.StateTransitionService;
 import com.delivery.optimization.service.HubDepositService;
 import com.delivery.optimization.repository.DeliveryRepository;
+import com.delivery.optimization.repository.DriverRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -34,6 +35,7 @@ public class DeliveryController {
     private final StateTransitionService stateTransitionService;
     private final DeliveryRepository deliveryRepository;
     private final HubDepositService hubDepositService;
+    private final DriverRepository driverRepository;
 
     @GetMapping
     @Operation(
@@ -205,13 +207,62 @@ public class DeliveryController {
         @Parameter(description = "ID de la livraison", required = true, example = "DEL-001")
         @PathVariable String id,
         @io.swagger.v3.oas.annotations.parameters.RequestBody(
-            description = "Événement de transition: ASSIGN, START, COMPLETE, FAIL",
+            description = "Événement de transition: ASSIGN, START, COMPLETE, FAIL, avec location optionnelle du livreur",
             required = true
         )
         @RequestBody Map<String, Object> body
     ) {
         String event = (String) body.get("event");
-        return stateTransitionService.transitionState(id, event, Instant.now());
+
+        // Extract location data if provided
+        @SuppressWarnings("unchecked")
+        Map<String, Object> location = (Map<String, Object>) body.get("location");
+
+        // If location is provided, update the driver's location first
+        Mono<Void> locationUpdateMono = Mono.<Void>empty();
+        if (location != null && location.containsKey("latitude") && location.containsKey("longitude")) {
+            locationUpdateMono = deliveryRepository.findById(id)
+                .flatMap(delivery -> {
+                    if (delivery.getDriverId() != null) {
+                        Double latitude = null;
+                        Double longitude = null;
+
+                        // Handle both Integer and Double types
+                        Object latObj = location.get("latitude");
+                        Object lngObj = location.get("longitude");
+
+                        if (latObj instanceof Number) {
+                            latitude = ((Number) latObj).doubleValue();
+                        }
+                        if (lngObj instanceof Number) {
+                            longitude = ((Number) lngObj).doubleValue();
+                        }
+
+                        if (latitude != null && longitude != null) {
+                            final Double finalLat = latitude;
+                            final Double finalLng = longitude;
+
+                            return driverRepository.findById(delivery.getDriverId())
+                                .flatMap(driver -> {
+                                    driver.setCurrentLatitude(finalLat);
+                                    driver.setCurrentLongitude(finalLng);
+                                    return driverRepository.save(driver);
+                                })
+                                .then();
+                        }
+                    }
+                    return Mono.<Void>empty();
+                })
+                .onErrorResume(error -> {
+                    // Log error but don't fail the transition
+                    System.err.println("Failed to update driver location: " + error.getMessage());
+                    return Mono.<Void>empty();
+                });
+        }
+
+        // Update location first, then perform state transition
+        return locationUpdateMono
+            .then(stateTransitionService.transitionState(id, event, Instant.now()));
     }
 
     @PostMapping("/{id}/deposit-at-hub")

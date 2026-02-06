@@ -388,20 +388,6 @@ class DeliveryAPI {
     });
   }
 
-  async depositAtHub(request: {
-    deliveryId: string;
-    hubNodeId: string;
-    driverId: string;
-    notes?: string;
-    storageLocation?: string;
-    depositProof?: string;
-  }): Promise<any> {
-    return this.request<any>("/v1/hub/deposit", {
-      method: "POST",
-      body: JSON.stringify(request),
-    });
-  }
-
   async getHubDeposits(hubId: string, status?: string): Promise<any[]> {
     const url = status
       ? `/v1/hub/${hubId}/deposits?status=${status}`

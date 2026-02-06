@@ -7,10 +7,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { api, formatPrice, formatDistance, type TrackingResponse } from "@/lib/api";
 import { getRealRoute } from "@/lib/routing";
 import Link from "next/link";
-import loadDynamic from "next/dynamic";
+import dynamicImport from "next/dynamic";
 
 // Dynamically import map component (client-side only)
-const DeliveryMap = loadDynamic(
+const DeliveryMap = dynamicImport(
   () => import("@/components/map/DeliveryMap").then((mod) => mod.DeliveryMap),
   { ssr: false }
 );

@@ -11,6 +11,7 @@ import { SignatureStep } from "@/components/steps/SignatureStep";
 import { PaiementStep } from "@/components/steps/PaiementStep";
 import { SuccessModal } from "@/components/ui/SuccessModal";
 import { api } from "@/lib/api";
+import { useToast } from "@/components/ui/Toast";
 
 const steps: Step[] = [
   { id: 1, label: "Expéditeur", icon: <User className="w-5 h-5" /> },
@@ -22,6 +23,7 @@ const steps: Step[] = [
 ];
 
 export default function DepositPage() {
+  const toast = useToast();
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
     sender: {},
@@ -117,7 +119,7 @@ export default function DepositPage() {
 
     } catch (error: any) {
       console.error("Erreur lors de la soumission:", error);
-      alert(`Erreur: ${error.message || "Une erreur est survenue. Veuillez réessayer."}`);
+      toast.error("Votre demande n'a pas pu être aboutie, réessayez dans quelques minutes");
     }
   };
 

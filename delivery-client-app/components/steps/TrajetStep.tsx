@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Route, MapPin, Clock, Calendar, Loader2 } from "lucide-react";
 import { api, formatETA } from "@/lib/api";
+import { useToast } from "@/components/ui/Toast";
 
 interface TrajetStepProps {
   onNext: (data: any) => void;
@@ -12,6 +13,7 @@ interface TrajetStepProps {
 }
 
 export function TrajetStep({ onNext, onBack, senderData, recipientData }: TrajetStepProps) {
+  const toast = useToast();
   const [formData, setFormData] = useState({
     preferredDate: "",
     preferredTime: "morning",
@@ -50,7 +52,9 @@ export function TrajetStep({ onNext, onBack, senderData, recipientData }: Trajet
         }
       } catch (err: any) {
         console.error("Erreur de calcul d'itinéraire:", err);
-        setError(err.message || "Erreur lors du calcul de l'itinéraire");
+        const errorMessage = err.message || "Erreur lors du calcul de l'itinéraire";
+        setError(errorMessage);
+        toast.error("Impossible de calculer l'itinéraire. Veuillez réessayer dans quelques minutes");
       } finally {
         setIsLoading(false);
       }
